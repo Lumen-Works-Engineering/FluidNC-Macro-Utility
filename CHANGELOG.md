@@ -5,7 +5,7 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.9.1] - 2024-12-27
+## [1.9.2] - 2024-12-27
 
 ### Fixed
 - **CRITICAL: Hole Probe logic errors** - Fixed multiple dangerous bugs in hole probing sequence
@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Cleanup**: Removed unnecessary Z-axis movements (hole probe stays at one Z level)
   - Fixed for both X-axis (East/West) and Y-axis (North/South) movements
   - **Impact**: Prevented crashes into workpiece/fixture and expensive probe damage
+
+## [1.9.1] - 2024-12-27
+
+### Changed
+- Version skipped - incremented to 1.9.2 for micro-versioning clarity
 
 ## [1.9] - 2024-12-27
 
@@ -108,6 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Numbering
 
-- **Major.Minor** format (e.g., 1.5, 1.6, 2.0)
-- Major version bump for breaking changes or major feature additions
-- Minor version bump for each development iteration
+- **Major.Minor.Patch** format (e.g., 1.9.2, 1.10.0, 2.0.0)
+- **Major**: Breaking changes or major feature additions
+- **Minor**: New features (backward compatible)
+- **Patch**: Bug fixes and micro-iterations during development/testing
