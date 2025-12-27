@@ -2,7 +2,7 @@
 
 A web-based utility for CNC probe operations with FluidNC controllers. Consolidates multiple probing functions into a single, portable HTML file that connects via WebSocket.
 
-![Version](https://img.shields.io/badge/version-1.9.3-blue)
+![Version](https://img.shields.io/badge/version-1.9.4-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
@@ -72,16 +72,18 @@ Use for finding the center of internal cylindrical features (holes, bores, pocke
 ### Corner Probe Tab
 Use for finding the XY corner of rectangular workpieces (both inside and outside corners).
 
-1. Select **Corner Type** from dropdown (8 options covering all quadrants)
-   - **Inside corners**: Position probe inside the corner (e.g., inside corner of a pocket)
-   - **Outside corners**: Position probe outside the corner (e.g., corner of workpiece edge)
-2. Set search distance (how far to move while searching for edges)
-3. Set probe depth (how far below surface to probe)
+1. **Manually position Z height** at desired probe level (Z will NOT move during probing)
+2. Select **Corner Type** from dropdown:
+   - **OUTSIDE Corner** (typical workpiece edge) - 4 options:
+     - **Bottom-Left**: Most common - position probe to LEFT and BELOW corner
+     - Bottom-Right, Top-Left, Top-Right
+   - **INSIDE Corner** (pocket/cutout) - 4 options for probing from inside
+3. Set search distance (how far to move while searching for edges)
 4. Click **Test Probe** to verify probe connection
 5. Click **Run Probe** to execute 2-edge double-probe sequence
 6. Use **Set XY0** to set work origin at corner
 
-**Corner Types**: NE (+X+Y), SE (+X-Y), NW (-X+Y), SW (-X-Y) for both inside and outside corners. The tool automatically accounts for probe tip diameter based on corner type.
+**Key Difference from Cylinder/Hole**: No Z movement - you position Z manually before probing. The dropdown labels clearly show which direction the probe will move.
 
 ### Saving Settings
 Use browser **File → Save As** (Ctrl+S) to save the HTML file with your current settings embedded. Settings include:
@@ -137,7 +139,7 @@ Use `Ctrl+Shift+[` to fold regions in VS Code.
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-Current version: **1.9.3** (2024-12-27)
+Current version: **1.9.4** (2024-12-27)
 
 ## Contributing
 

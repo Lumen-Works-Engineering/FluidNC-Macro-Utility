@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.9.3</title>
+<title>FluidNC Probe Utility v1.9.4</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -502,28 +502,25 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
         </div>
         <div class="form-row">
           <span class="form-label">Corner Type:</span>
-          <select id="corner-type" style="width: 180px;">
-            <option value="inside-xplus-yplus">Inside +X+Y (NE)</option>
-            <option value="inside-xplus-yminus">Inside +X-Y (SE)</option>
-            <option value="inside-xminus-yplus">Inside -X+Y (NW)</option>
-            <option value="inside-xminus-yminus">Inside -X-Y (SW)</option>
-            <option value="outside-xplus-yplus">Outside +X+Y (NE)</option>
-            <option value="outside-xplus-yminus">Outside +X-Y (SE)</option>
-            <option value="outside-xminus-yplus">Outside -X+Y (NW)</option>
-            <option value="outside-xminus-yminus">Outside -X-Y (SW)</option>
+          <select id="corner-type" style="width: 350px;">
+            <optgroup label="OUTSIDE Corner (typical workpiece edge)">
+              <option value="outside-xminus-yminus">Bottom-Left (probe from lower-left, move +X +Y)</option>
+              <option value="outside-xplus-yminus">Bottom-Right (probe from lower-right, move -X +Y)</option>
+              <option value="outside-xminus-yplus">Top-Left (probe from upper-left, move +X -Y)</option>
+              <option value="outside-xplus-yplus">Top-Right (probe from upper-right, move -X -Y)</option>
+            </optgroup>
+            <optgroup label="INSIDE Corner (pocket or cutout)">
+              <option value="inside-xminus-yminus">Bottom-Left (inside pocket, probe -X -Y)</option>
+              <option value="inside-xplus-yminus">Bottom-Right (inside pocket, probe +X -Y)</option>
+              <option value="inside-xminus-yplus">Top-Left (inside pocket, probe -X +Y)</option>
+              <option value="inside-xplus-yplus">Top-Right (inside pocket, probe +X +Y)</option>
+            </optgroup>
           </select>
         </div>
         <div class="form-row">
           <span class="form-label">Search Distance:</span>
           <div class="input-with-unit">
             <input type="number" id="corner-search-dist" value="30" min="5" step="1">
-            <span class="unit-suffix">mm</span>
-          </div>
-        </div>
-        <div class="form-row">
-          <span class="form-label">Probe Depth:</span>
-          <div class="input-with-unit">
-            <input type="number" id="corner-probe-depth" value="5" min="1" step="0.5">
             <span class="unit-suffix">mm</span>
           </div>
         </div>
@@ -540,6 +537,23 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
             <input type="number" id="corner-tip-dia" value="2.0" readonly disabled>
             <span class="unit-suffix">mm</span>
           </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Setup Instructions</div>
+        <div style="font-size: 13px; line-height: 1.6; color: #ccc;">
+          <p><strong>OUTSIDE Corner</strong> (typical workpiece edge):</p>
+          <ul style="margin: 5px 0; padding-left: 20px;">
+            <li><strong>Bottom-Left:</strong> Position probe to the LEFT and BELOW the corner. Probe moves +X (right) and +Y (up)</li>
+            <li><strong>Bottom-Right:</strong> Position probe to the RIGHT and BELOW the corner. Probe moves -X (left) and +Y (up)</li>
+            <li><strong>Top-Left:</strong> Position probe to the LEFT and ABOVE the corner. Probe moves +X (right) and -Y (down)</li>
+            <li><strong>Top-Right:</strong> Position probe to the RIGHT and ABOVE the corner. Probe moves -X (left) and -Y (down)</li>
+          </ul>
+          <p style="margin-top: 10px;"><strong>INSIDE Corner</strong> (pocket or cutout):</p>
+          <ul style="margin: 5px 0; padding-left: 20px;">
+            <li>Position probe INSIDE the corner. Probe moves outward to find walls.</li>
+          </ul>
+          <p style="margin-top: 10px; color: #ff9800;"><strong>Important:</strong> Manually position Z height before probing. Z will NOT move during probe sequence.</p>
         </div>
       </div>
       <div class="section">
@@ -1753,9 +1767,8 @@ function loadCornerPreset() {
   const p = App.settings.presets.corner[idx];
   if (!p) return;
   document.getElementById('corner-preset-name').value = p.name || '';
-  document.getElementById('corner-type').value = p.cornerType || 'outside-xplus-yplus';
+  document.getElementById('corner-type').value = p.cornerType || 'outside-xminus-yminus';
   document.getElementById('corner-search-dist').value = p.searchDistance || 30;
-  document.getElementById('corner-probe-depth').value = p.probeDepth || 5;
   document.getElementById('corner-feedrate').value = p.feedrate || 100;
 }
 
@@ -1766,7 +1779,6 @@ function saveCornerPreset() {
     name: name,
     cornerType: document.getElementById('corner-type').value,
     searchDistance: parseFloat(document.getElementById('corner-search-dist').value) || 30,
-    probeDepth: parseFloat(document.getElementById('corner-probe-depth').value) || 5,
     feedrate: parseInt(document.getElementById('corner-feedrate').value) || 100
   };
   const idx = App.settings.presets.corner.findIndex(p => p.name === name);
@@ -1816,7 +1828,6 @@ async function runCornerProbe() {
 
   const cornerType = document.getElementById('corner-type').value;
   const searchDist = parseFloat(document.getElementById('corner-search-dist').value);
-  const probeDepth = parseFloat(document.getElementById('corner-probe-depth').value);
   const feedrate = parseInt(document.getElementById('corner-feedrate').value) || 100;
   const feedrateSlow = App.settings.probe.feedrateSlow || 50;
   const retract = App.settings.probe.retractDistance || 2;
@@ -1828,7 +1839,7 @@ async function runCornerProbe() {
   const xDir = parts[1].includes('plus') ? 1 : -1;  // +1 for +X, -1 for -X
   const yDir = parts[2].includes('plus') ? 1 : -1;  // +1 for +Y, -1 for -Y
 
-  if (!confirm('Corner Probe\n\nType: ' + cornerType + '\nSearch distance: ' + searchDist + ' mm\nProbe depth: ' + probeDepth + ' mm\n\nProbe tip positioned correctly?\n\nContinue?')) return;
+  if (!confirm('Corner Probe\n\nType: ' + cornerType + '\nSearch distance: ' + searchDist + ' mm\n\nProbe tip positioned at correct Z height?\n\nContinue?')) return;
 
   App.probeInProgress = true;
   probeCommandId = 0;
@@ -1846,7 +1857,6 @@ async function runCornerProbe() {
 
     // Probe X edge (vertical surface)
     statusEl.innerHTML = '<div class="probe-status working">Probing X edge...</div>';
-    await moveRel('Z', -probeDepth);
 
     // Move to search start position for X edge
     if (isInside) {
@@ -1863,7 +1873,6 @@ async function runCornerProbe() {
     const xEdge = (xProbe1.x + xProbe2.x) / 2;
 
     await moveRel('X', -xDir * probeDir * retract);
-    await moveRel('Z', probeDepth);
 
     // Return to approximately above corner
     statusEl.innerHTML = '<div class="probe-status working">Moving to Y probe position...</div>';
@@ -1873,7 +1882,6 @@ async function runCornerProbe() {
 
     // Probe Y edge (horizontal surface)
     statusEl.innerHTML = '<div class="probe-status working">Probing Y edge...</div>';
-    await moveRel('Z', -probeDepth);
 
     // Move to search start position for Y edge
     if (isInside) {
@@ -1888,7 +1896,6 @@ async function runCornerProbe() {
     const yEdge = (yProbe1.y + yProbe2.y) / 2;
 
     await moveRel('Y', -yDir * probeDir * retract);
-    await moveRel('Z', probeDepth);
 
     // Calculate corner position (accounting for probe tip diameter)
     let cornerX, cornerY;
@@ -1919,7 +1926,7 @@ async function runCornerProbe() {
   } catch (err) {
     console.error('Probe error:', err);
     statusEl.innerHTML = '<div class="probe-status error">✗ Failed: ' + err.message + '</div>';
-    try { sendCommand('G91 G0 Z10'); sendCommand('G90'); } catch(e) {}
+    try { sendCommand('G90'); } catch(e) {}
   } finally {
     sendCommand('G90');
     App.probeInProgress = false;

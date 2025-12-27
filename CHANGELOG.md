@@ -5,6 +5,24 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.4] - 2024-12-27
+
+### Fixed
+- **Corner Probe improvements** - Major usability fixes based on user testing
+  - **Removed all Z-axis movement** - User manually positions Z height before probing (matches Hole Probe behavior)
+  - **Clearer dropdown labels** - Reorganized with "OUTSIDE Corner" and "INSIDE Corner" groups
+  - Bottom-Left is now first option (most common use case)
+  - Labels now indicate probe direction: "Bottom-Left (probe from lower-left, move +X +Y)"
+  - **Added Setup Instructions panel** - Clear guidance for each corner type with positioning details
+  - **Important note** highlighted: Z will NOT move during probe sequence
+  - Removed "Probe Depth" UI field (no longer used)
+  - Updated presets to remove probeDepth parameter
+  - **Impact**: Much clearer user experience, no unexpected Z movements that could crash probe
+
+### Changed
+- Corner probe default selection changed to "Bottom-Left" (most common scenario)
+- Corner probe error handling no longer includes Z retraction
+
 ## [1.9.3] - 2024-12-27
 
 ### Fixed
