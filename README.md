@@ -2,7 +2,7 @@
 
 A web-based utility for CNC probe operations with FluidNC controllers. Consolidates multiple probing functions into a single, portable HTML file that connects via WebSocket.
 
-![Version](https://img.shields.io/badge/version-1.8-blue)
+![Version](https://img.shields.io/badge/version-1.9.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
@@ -20,7 +20,7 @@ A web-based utility for CNC probe operations with FluidNC controllers. Consolida
 | Control | ✅ Complete | Position display (MCS/WCS), jogging, homing, output toggles |
 | Cylinder Probe | ✅ Complete | External cylinder/boss center finding |
 | Hole Probe | ✅ Complete | Internal hole/bore center finding |
-| Corner Probe | 🚧 Planned | XY corner detection |
+| Corner Probe | ✅ Complete | Inside/outside corner detection (8 quadrants) |
 | Side Align | 🚧 Planned | Two-point alignment to axis |
 | Height Map | 🚧 Planned | T-slot surface mapping |
 | Settings | ✅ Complete | All configuration with JSON editor |
@@ -68,6 +68,20 @@ Use for finding the center of internal cylindrical features (holes, bores, pocke
 5. Use **Set XY0** to set work origin at center
 
 **Key Difference**: Cylinder probe moves outward then probes inward. Hole probe starts inside and probes outward to walls.
+
+### Corner Probe Tab
+Use for finding the XY corner of rectangular workpieces (both inside and outside corners).
+
+1. Select **Corner Type** from dropdown (8 options covering all quadrants)
+   - **Inside corners**: Position probe inside the corner (e.g., inside corner of a pocket)
+   - **Outside corners**: Position probe outside the corner (e.g., corner of workpiece edge)
+2. Set search distance (how far to move while searching for edges)
+3. Set probe depth (how far below surface to probe)
+4. Click **Test Probe** to verify probe connection
+5. Click **Run Probe** to execute 2-edge double-probe sequence
+6. Use **Set XY0** to set work origin at corner
+
+**Corner Types**: NE (+X+Y), SE (+X-Y), NW (-X+Y), SW (-X-Y) for both inside and outside corners. The tool automatically accounts for probe tip diameter based on corner type.
 
 ### Saving Settings
 Use browser **File → Save As** (Ctrl+S) to save the HTML file with your current settings embedded. Settings include:
@@ -123,7 +137,7 @@ Use `Ctrl+Shift+[` to fold regions in VS Code.
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-Current version: **1.8** (2024-12-27)
+Current version: **1.9.1** (2024-12-27)
 
 ## Contributing
 

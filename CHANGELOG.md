@@ -5,6 +5,36 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1] - 2024-12-27
+
+### Fixed
+- **CRITICAL: Hole Probe movement bug** - Fixed dangerous over-travel when moving from East to West probe
+  - Was moving `-(probeDistance - retract)` then `-(probeDistance)` which caused double movement
+  - Now correctly moves `-(probeDistance * 2)` in single move to opposite side
+  - Fixed for both X (East/West) and Y (North/South) axes
+  - **Impact**: Prevented potential crashes into workpiece/fixture
+- Hole probe now correctly retracts and probes inward from opposite side
+
+## [1.9] - 2024-12-27
+
+### Added
+- **Corner Probe tab (Phase 5)** - Find XY corner of rectangular workpieces
+  - Support for both **inside** and **outside** corners
+  - 8 corner type options covering all quadrants (NE, SE, NW, SW)
+  - Double-probe accuracy for both X and Y edges
+  - Automatically accounts for probe tip diameter in corner calculation
+  - Preset management for common corner configurations
+  - Set X0/Y0/XY0 buttons to set work origin at corner
+  - Instructions panel explaining inside vs outside corner probing
+- **Corner presets** added to settings structure
+- Corner tip diameter display synced with global probe settings
+
+### Technical
+- Corner probe logic handles direction multipliers for all 8 corner types
+- Inside corners: probe outward from center, add tip radius
+- Outside corners: probe inward from edges, subtract tip radius
+- Uses shared probe utilities (`createProbeHelpers`, `testProbeConnection`)
+
 ## [1.8] - 2024-12-27
 
 ### Added
