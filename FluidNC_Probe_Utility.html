@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.9.4</title>
+<title>FluidNC Probe Utility v1.9.5</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -1851,28 +1851,20 @@ async function runCornerProbe() {
     statusEl.innerHTML = '<div class="probe-status working">Starting corner probe...</div>';
     await sendAndWait('G91');
 
-    // For OUTSIDE corner: probe inward from outside
-    // For INSIDE corner: probe outward from inside
-    const probeDir = isInside ? 1 : -1;  // Multiplier for probe direction
-
     // Probe X edge (vertical surface)
     statusEl.innerHTML = '<div class="probe-status working">Probing X edge...</div>';
 
-    // Move to search start position for X edge
-    if (isInside) {
-      // Inside: start at center, move out to probe back in
-      await moveRel('X', xDir * searchDist * 0.5);
-    } else {
-      // Outside: start away from edge, probe toward it
-      await moveRel('X', -xDir * searchDist);
-    }
+    // For OUTSIDE corner: xDir/yDir point to where corner IS, so probe in OPPOSITE direction
+    // For INSIDE corner: xDir/yDir point to where corner IS, probe in SAME direction (outward)
+    const xProbeDir = isInside ? xDir : -xDir;
+    const yProbeDir = isInside ? yDir : -yDir;
 
-    const xProbe1 = await probeAndCapture('X', xDir * probeDir * searchDist * 2, feedrate);
-    await moveRel('X', -xDir * probeDir * retract);
-    const xProbe2 = await probeAndCapture('X', xDir * probeDir * (retract + 3), feedrateSlow);
+    const xProbe1 = await probeAndCapture('X', xProbeDir * searchDist, feedrate);
+    await moveRel('X', -xProbeDir * retract);
+    const xProbe2 = await probeAndCapture('X', xProbeDir * (retract + 3), feedrateSlow);
     const xEdge = (xProbe1.x + xProbe2.x) / 2;
 
-    await moveRel('X', -xDir * probeDir * retract);
+    await moveRel('X', -xProbeDir * retract);
 
     // Return to approximately above corner
     statusEl.innerHTML = '<div class="probe-status working">Moving to Y probe position...</div>';
@@ -1883,19 +1875,12 @@ async function runCornerProbe() {
     // Probe Y edge (horizontal surface)
     statusEl.innerHTML = '<div class="probe-status working">Probing Y edge...</div>';
 
-    // Move to search start position for Y edge
-    if (isInside) {
-      await moveRel('Y', yDir * searchDist * 0.5);
-    } else {
-      await moveRel('Y', -yDir * searchDist);
-    }
-
-    const yProbe1 = await probeAndCapture('Y', yDir * probeDir * searchDist * 2, feedrate);
-    await moveRel('Y', -yDir * probeDir * retract);
-    const yProbe2 = await probeAndCapture('Y', yDir * probeDir * (retract + 3), feedrateSlow);
+    const yProbe1 = await probeAndCapture('Y', yProbeDir * searchDist, feedrate);
+    await moveRel('Y', -yProbeDir * retract);
+    const yProbe2 = await probeAndCapture('Y', yProbeDir * (retract + 3), feedrateSlow);
     const yEdge = (yProbe1.y + yProbe2.y) / 2;
 
-    await moveRel('Y', -yDir * probeDir * retract);
+    await moveRel('Y', -yProbeDir * retract);
 
     // Calculate corner position (accounting for probe tip diameter)
     let cornerX, cornerY;

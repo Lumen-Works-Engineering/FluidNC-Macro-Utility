@@ -5,6 +5,17 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.5] - 2024-12-27
+
+### Fixed
+- **CRITICAL: Corner Probe direction logic** - Completely rewrote probe movement logic
+  - **Root Cause**: Overcomplicated logic with `probeDir` multiplier was moving in wrong directions
+  - **Old behavior**: Moved AWAY from workpiece before probing, causing timeouts and wrong direction probes
+  - **New behavior**: Simplified - just probe in the xDir/yDir direction (toward workpiece for outside corners)
+  - Removed unnecessary "move to search start" logic
+  - Both OUTSIDE and INSIDE corners now use same simple logic: probe in the direction indicated by xDir/yDir
+  - **Impact**: Corner probe now actually works correctly for all 8 corner types
+
 ## [1.9.4] - 2024-12-27
 
 ### Fixed
