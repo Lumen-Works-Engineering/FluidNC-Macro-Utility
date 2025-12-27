@@ -1676,11 +1676,11 @@ async function runHoleProbe() {
     await sendAndWait('G53 G0 X' + (eastX - probeDistance).toFixed(3));  // Move to West side
     await sendAndWait('G91');
 
-    // WEST (-X direction) - probe back toward East
+    // WEST (-X direction) - probe outward (West)
     statusEl.innerHTML = '<div class="probe-status working">Probing West wall...</div>';
-    probeResults.west.push(await probeAndCapture('X', probeDistance, feedrate));
-    await moveRel('X', -retract);
-    probeResults.west.push(await probeAndCapture('X', retract + 3, feedrateSlow));
+    probeResults.west.push(await probeAndCapture('X', -probeDistance, feedrate));
+    await moveRel('X', retract);
+    probeResults.west.push(await probeAndCapture('X', -(retract + 3), feedrateSlow));
     const westX = (probeResults.west[0].x + probeResults.west[1].x) / 2;
 
     const centerX = (eastX + westX) / 2;
@@ -1706,11 +1706,11 @@ async function runHoleProbe() {
     await sendAndWait('G53 G0 Y' + (northY - probeDistance).toFixed(3));  // Move to South side
     await sendAndWait('G91');
 
-    // SOUTH (-Y direction) - probe back toward North
+    // SOUTH (-Y direction) - probe outward (South)
     statusEl.innerHTML = '<div class="probe-status working">Probing South wall...</div>';
-    probeResults.south.push(await probeAndCapture('Y', probeDistance, feedrate));
-    await moveRel('Y', -retract);
-    probeResults.south.push(await probeAndCapture('Y', retract + 3, feedrateSlow));
+    probeResults.south.push(await probeAndCapture('Y', -probeDistance, feedrate));
+    await moveRel('Y', retract);
+    probeResults.south.push(await probeAndCapture('Y', -(retract + 3), feedrateSlow));
     const southY = (probeResults.south[0].y + probeResults.south[1].y) / 2;
 
     const centerY = (northY + southY) / 2;
