@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>T-Slot Height Map Probing (FluidNC)</title>
+<style>
+  body { font-family: sans-serif; margin: 1rem 2rem; }
+  h1 { margin-top: 0; }
+  label { display: inline-block; width: 80px; }
+  input[type="text"], input[type="number"] { width: 40px; }
+  #slotX, #yPos { width: 300px; }
+  #ip { width: 120px; }
+  button { margin: 0.25rem 0.5rem 0.25rem 0; }
+  #abortBtn { background: #c00; color: white; font-weight: bold; }
+  #abortBtn:disabled { background: #888; }
+  #log { white-space: pre; background: #111; color: #0f0; padding: 0.5rem; max-height: 220px; overflow: auto; font-size: 0.8rem; }
+  .log-error { color: #f55; }
+  .log-warning { color: #ff0; }
+  .log-success { color: #5f5; }
+  #progress { margin: 0.5rem 0; font-weight: bold; }
+  #resultsText { white-space: pre; background: #f5f5f5; padding: 0.5rem; max-height: 260px; overflow: auto; font-size: 0.8rem; }
+  table.probe { border-collapse: collapse; margin-top: 0.5rem; }
+  table.probe th, table.probe td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    text-align: center;
+    font-size: 0.8rem;
+  }
+  table.probe th { background: #ddd; }
+  .status-connected { color: green; font-weight: bold; }
+  .status-disconnected { color: red; font-weight: bold; }
+  .status-probing { color: blue; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>T-Slot Height Map Probing (FluidNC)</h1>
+
+<div>
+  <label>IP/Host:</label>
+  <input id="ip" type="text" value="192.168.73.13">
+  <label>Port:</label>
+  <input id="port" type="number" value="81">
+  <button id="connectBtn">Connect</button>
+  <button id="disconnectBtn" disabled>Disconnect</button>
+  <span id="statusIndicator" class="status-disconnected">â— Disconnected</span>
+</div>
+
+<div style="margin-top: 0.5rem;">
+  <strong>Slots X (mm):</strong>
+  <input id="slotX" type="text" value="0,60,140.3,200.3,280.6,340.6" size="50">
+</div>
+<div style="margin-top: 0.25rem;">
+  <strong>Y positions (mm):</strong>
+  <input id="yPos" type="text" value="0,50,100,150,200,250,300,350,380" size="50">
+</div>
+<div style="margin-top: 0.25rem;">
+  <label>SAFE_Z:</label><input id="safeZ" type="number" value="2" step="0.1">
+  <span style="color: #666; font-size: 0.85rem;">(Must be positive - clearance height)</span>
+</div>
+<div style="margin-top: 0.25rem;">
+  <label>Depth:</label><input id="probeDepth" type="number" value="-10" step="0.1">
+  <span style="color: #666; font-size: 0.85rem;">(Must be negative - max probe travel)</span>
+</div>
+<div style="margin-top: 0.25rem;">
+  <label>Feed:</label><input id="probeFeed" type="number" value="100" step="1">
+  <span style="color: #666; font-size: 0.85rem;">(mm/min)</span>
+</div>
+<div style="margin-top: 0.25rem;">
+  <label>Timeout:</label><input id="timeout" type="number" value="30" step="1">
+  <span style="color: #666; font-size: 0.85rem;">(seconds - watchdog per command)</span>
+</div>
+
+<div style="margin-top: 0.5rem;">
+  <button id="startProbeBtn" disabled>Start Probing</button>
+  <button id="abortBtn" disabled>âš  ABORT</button>
+</div>
+
+<div id="progress"></div>
+
+<h3>Status / Log</h3>
+<div id="log"></div>
+
+<h3>Numeric Results</h3>
+<div style="margin-bottom: 0.5rem;">
+  <button id="exportCsvBtn" disabled>Export CSV</button>
+  <button id="exportHtmlBtn" disabled>Export HTML Report</button>
+</div>
+<div id="resultsText">No data yet.</div>
+
+<h3>Heatmap (Deviation from Reference)</h3>
+<div id="heatmap"></div>
+
+<script>
+// ===== CONSTANTS =====
+const CTRL_X = '\x18';  // Soft reset character
+
+// ===== STATE =====
+let ws = null;
+let isConnected = false;
+let isProbing = false;
+let isPaused = false;
+
+// Configuration (parsed from inputs)
+let SLOT_X = [];
+let Y_POSITIONS = [];
+let SAFE_Z = 2;
+let PROBE_DEPTH = -10;
+let PROBE_FEED = 100;
+let TIMEOUT_SEC = 30;
+
+// Probing state
+let probeData = [];      // Array of {x, y, z, success}
+let expectedProbes = 0;
+let sentCommands = [];
+let sentIndex = 0;
+let watchdogTimer = null;
+let probesComplete = false;  // All probe points collected, but still returning home
+
+// ===== LOGGING =====
+function log(msg, className = '') {
+  const logDiv = document.getElementById('log');
+  if (className) {
+    logDiv.innerHTML += `<span class="${className}">${escapeHtml(msg)}</span>\n`;
+  } else {
+    logDiv.textContent += msg + "\n";
+  }
+  logDiv.scrollTop = logDiv.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function updateProgress(current, total, message = '') {
+  const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+  document.getElementById('progress').textContent = 
+    `Progress: ${current} / ${total} probes (${pct}%) ${message}`;
+}
+
+function updateStatus(status) {
+  const el = document.getElementById('statusIndicator');
+  switch(status) {
+    case 'connected':
+      el.textContent = 'â— Connected';
+      el.className = 'status-connected';
+      break;
+    case 'disconnected':
+      el.textContent = 'â— Disconnected';
+      el.className = 'status-disconnected';
+      break;
+    case 'probing':
+      el.textContent = 'â— Probing...';
+      el.className = 'status-probing';
+      break;
+    case 'error':
+      el.textContent = 'â— ERROR';
+      el.className = 'status-disconnected';
+      break;
+  }
+}
+
+// ===== UTILITIES =====
+function parseNumberList(str) {
+  return str.split(",").map(s => parseFloat(s.trim())).filter(v => !Number.isNaN(v));
+}
+
+// Parse [PRB:X,Y,Z,A:S] or [PRB:X,Y,Z:S] where S is success flag (1=success, 0=failure)
+function parsePRBLine(line) {
+  // 4-axis format: [PRB:X,Y,Z,A:S]
+  const fourAxis = /\[PRB:([-0-9.]+),([-0-9.]+),([-0-9.]+),([-0-9.]+):(\d)\]/;
+  // 3-axis format: [PRB:X,Y,Z:S]
+  const threeAxis = /\[PRB:([-0-9.]+),([-0-9.]+),([-0-9.]+):(\d)\]/;
+  
+  let m = line.match(fourAxis);
+  if (m) {
+    return { 
+      x: parseFloat(m[1]), 
+      y: parseFloat(m[2]), 
+      z: parseFloat(m[3]), 
+      success: m[5] === '1' 
+    };
+  }
+  m = line.match(threeAxis);
+  if (m) {
+    return { 
+      x: parseFloat(m[1]), 
+      y: parseFloat(m[2]), 
+      z: parseFloat(m[3]), 
+      success: m[4] === '1' 
+    };
+  }
+  return null;
+}
+
+// ===== COMMAND GENERATION =====
+function buildProbeCommands() {
+  const cmds = [
+    "G21",  // mm mode
+    "G90",  // absolute positioning
+    "G54"   // work coordinate system
+  ];
+  
+  for (let i = 0; i < SLOT_X.length; i++) {
+    const x = SLOT_X[i];
+    for (let j = 0; j < Y_POSITIONS.length; j++) {
+      const y = Y_POSITIONS[j];
+      if (j === 0) {
+        // First Y in this slot - move X and Y
+        cmds.push(`G0 Z${SAFE_Z}`);
+        cmds.push(`G0 X${x} Y${y}`);
+      } else {
+        // Same slot, just move Y
+        cmds.push(`G0 Y${y}`);
+      }
+      cmds.push(`G38.2 Z${PROBE_DEPTH} F${PROBE_FEED}`);
+      cmds.push(`G0 Z${SAFE_Z}`);
+    }
+  }
+  
+  // Return to origin
+  cmds.push(`G0 Z${SAFE_Z}`);
+  cmds.push("G0 X0 Y0");
+  
+  return cmds;
+}
+
+// ===== WATCHDOG TIMER =====
+function resetWatchdog() {
+  if (watchdogTimer) {
+    clearTimeout(watchdogTimer);
+  }
+  watchdogTimer = setTimeout(() => {
+    if (isProbing) {
+      log(`*** WATCHDOG TIMEOUT (${TIMEOUT_SEC}s) - No response from controller ***`, 'log-error');
+      log("Aborting probe sequence. Check connection and machine state.", 'log-error');
+      emergencyStop();
+    }
+  }, TIMEOUT_SEC * 1000);
+}
+
+function clearWatchdog() {
+  if (watchdogTimer) {
+    clearTimeout(watchdogTimer);
+    watchdogTimer = null;
+  }
+}
+
+// ===== WEBSOCKET =====
+function connect() {
+  if (isConnected) return;
+
+  const ip = document.getElementById('ip').value.trim();
+  const port = document.getElementById('port').value.trim();
+  const url = `ws://${ip}:${port}/`;
+
+  log(`Connecting to ${url} ...`);
+  
+  try {
+    ws = new WebSocket(url);
+  } catch (e) {
+    log(`Connection failed: ${e.message}`, 'log-error');
+    return;
+  }
+
+  ws.onopen = () => {
+    isConnected = true;
+    document.getElementById('connectBtn').disabled = true;
+    document.getElementById('disconnectBtn').disabled = false;
+    document.getElementById('startProbeBtn').disabled = false;
+    updateStatus('connected');
+    log("Connected to FluidNC.", 'log-success');
+  };
+
+  ws.onclose = () => {
+    const wasProbing = isProbing;
+    isConnected = false;
+    isProbing = false;
+    clearWatchdog();
+    
+    document.getElementById('connectBtn').disabled = false;
+    document.getElementById('disconnectBtn').disabled = true;
+    document.getElementById('startProbeBtn').disabled = true;
+    document.getElementById('abortBtn').disabled = true;
+    updateStatus('disconnected');
+    
+    log("Disconnected from FluidNC.");
+    
+    if (wasProbing) {
+      log("*** WARNING: Disconnected while probing! ***", 'log-warning');
+      log("*** Machine may still be in motion! ***", 'log-warning');
+      log("*** Manually verify machine state before continuing! ***", 'log-warning');
+      alert("WARNING: Disconnected while probing!\n\nThe machine may still be in motion.\nManually verify machine state before continuing!");
+    }
+  };
+
+  ws.onerror = (e) => {
+    log("WebSocket error occurred.", 'log-error');
+    updateStatus('error');
+  };
+
+  ws.onmessage = async (event) => {
+    let data = event.data;
+    // Handle Blob or ArrayBuffer responses
+    if (data instanceof Blob) {
+      data = await data.text();
+    } else if (data instanceof ArrayBuffer) {
+      data = new TextDecoder().decode(data);
+    }
+    handleIncoming(data);
+  };
+}
+
+function disconnect() {
+  if (ws && isConnected) {
+    if (isProbing) {
+      if (!confirm("Probing is in progress!\n\nDisconnecting will NOT stop the machine.\nAre you sure you want to disconnect?")) {
+        return;
+      }
+    }
+    log("Closing connection...");
+    ws.close();
+  }
+}
+
+// ===== PROBING CONTROL =====
+function validateInputs() {
+  SLOT_X = parseNumberList(document.getElementById('slotX').value);
+  Y_POSITIONS = parseNumberList(document.getElementById('yPos').value);
+  SAFE_Z = parseFloat(document.getElementById('safeZ').value);
+  PROBE_DEPTH = parseFloat(document.getElementById('probeDepth').value);
+  PROBE_FEED = parseFloat(document.getElementById('probeFeed').value);
+  TIMEOUT_SEC = parseFloat(document.getElementById('timeout').value);
+
+  if (!SLOT_X.length) {
+    alert("Invalid Slot X positions - must have at least one value.");
+    return false;
+  }
+  if (!Y_POSITIONS.length) {
+    alert("Invalid Y positions - must have at least one value.");
+    return false;
+  }
+  if (isNaN(SAFE_Z) || SAFE_Z <= 0) {
+    alert("SAFE_Z must be a positive number!\n\nThis is your clearance height above the work surface.");
+    return false;
+  }
+  if (isNaN(PROBE_DEPTH) || PROBE_DEPTH >= 0) {
+    alert("PROBE_DEPTH must be a negative number!\n\nThis is how far below current Z the probe will travel if it doesn't trigger.");
+    return false;
+  }
+  if (PROBE_DEPTH >= SAFE_Z) {
+    alert("PROBE_DEPTH must be less than SAFE_Z!\n\nCurrent: SAFE_Z=" + SAFE_Z + ", PROBE_DEPTH=" + PROBE_DEPTH);
+    return false;
+  }
+  if (isNaN(PROBE_FEED) || PROBE_FEED <= 0 || PROBE_FEED > 500) {
+    alert("PROBE_FEED must be between 1 and 500 mm/min.\n\nRecommended: 100 mm/min for accuracy.");
+    return false;
+  }
+  if (isNaN(TIMEOUT_SEC) || TIMEOUT_SEC < 5) {
+    alert("Timeout must be at least 5 seconds.");
+    return false;
+  }
+  
+  return true;
+}
+
+function startProbing() {
+  if (!isConnected || isProbing) return;
+
+  if (!validateInputs()) return;
+
+  // Confirmation
+  const totalProbes = SLOT_X.length * Y_POSITIONS.length;
+  const msg = `Ready to probe ${totalProbes} points.\n\n` +
+              `Slots (X): ${SLOT_X.join(', ')}\n` +
+              `Y positions: ${Y_POSITIONS.join(', ')}\n` +
+              `SAFE_Z: ${SAFE_Z} mm\n` +
+              `Probe depth: ${PROBE_DEPTH} mm\n` +
+              `Feed rate: ${PROBE_FEED} mm/min\n\n` +
+              `IMPORTANT:\n` +
+              `- Probe must be positioned at first slot (X=${SLOT_X[0]}, Y=${Y_POSITIONS[0]})\n` +
+              `- Z should be approximately ${SAFE_Z}mm above the surface\n` +
+              `- Work coordinates (G54) must be set correctly\n\n` +
+              `Continue?`;
+  
+  if (!confirm(msg)) {
+    log("Probing cancelled by user.");
+    return;
+  }
+
+  // Initialize state
+  probeData = [];
+  sentCommands = buildProbeCommands();
+  sentIndex = 0;
+  expectedProbes = totalProbes;
+  isProbing = true;
+  isPaused = false;
+  probesComplete = false;
+  
+  document.getElementById('abortBtn').disabled = false;
+  document.getElementById('startProbeBtn').disabled = true;
+  updateStatus('probing');
+  updateProgress(0, expectedProbes, '- Starting...');
+
+  log(`Starting probe sequence: ${expectedProbes} points`, 'log-success');
+  log(`Commands to send: ${sentCommands.length}`);
+  
+  sendNextCommand();
+}
+
+function emergencyStop() {
+  log("*** EMERGENCY STOP ***", 'log-error');
+  
+  clearWatchdog();
+  isProbing = false;
+  isPaused = false;
+  
+  if (ws && isConnected) {
+    // Send feed hold immediately
+    log("Sending feed hold (!)", 'log-warning');
+    ws.send("!");
+    
+    // Small delay then soft reset
+    setTimeout(() => {
+      if (ws && isConnected) {
+        log("Sending soft reset (Ctrl-X)", 'log-warning');
+        ws.send(CTRL_X);
+      }
+    }, 100);
+  }
+  
+  document.getElementById('abortBtn').disabled = true;
+  document.getElementById('startProbeBtn').disabled = false;
+  updateStatus('connected');
+  updateProgress(probeData.length, expectedProbes, '- ABORTED');
+  
+  // Build partial results if we have any data
+  if (probeData.length > 0) {
+    log(`Partial data collected: ${probeData.length} points`);
+    document.getElementById('exportCsvBtn').disabled = false;
+    document.getElementById('exportHtmlBtn').disabled = false;
+    buildResults();
+  }
+}
+
+function abortProbing() {
+  if (!isProbing && !isPaused) return;
+  
+  if (confirm("ABORT probing?\n\nThis will send feed hold and soft reset to stop the machine.")) {
+    emergencyStop();
+  }
+}
+
+function sendNextCommand() {
+  if (!isProbing || !isConnected) return;
+  
+  if (sentIndex >= sentCommands.length) {
+    log("All commands sent. Waiting for final responses...");
+    return;
+  }
+  
+  const cmd = sentCommands[sentIndex];
+  sentIndex++;
+  
+  log(">> " + cmd);
+  ws.send(cmd + "\n");
+  
+  // Reset watchdog timer
+  resetWatchdog();
+}
+
+// ===== MESSAGE HANDLING =====
+function handleIncoming(raw) {
+  const lines = raw.split("\n");
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    
+    // Log incoming (but filter out frequent status reports for cleaner log)
+    if (!trimmed.startsWith("<") || trimmed.includes("Alarm") || trimmed.includes("Error")) {
+      log("<< " + trimmed);
+    }
+
+    // ===== CHECK FOR ERRORS/ALARMS FIRST =====
+    const lowerLine = trimmed.toLowerCase();
+    
+    if (lowerLine.startsWith("error:")) {
+      log("*** ERROR FROM CONTROLLER ***", 'log-error');
+      if (isProbing) {
+        emergencyStop();
+        alert("ERROR from controller:\n\n" + trimmed + "\n\nProbing aborted. Check machine state.");
+      }
+      return;
+    }
+    
+    if (lowerLine.startsWith("alarm:") || trimmed.includes("ALARM:")) {
+      log("*** ALARM FROM CONTROLLER ***", 'log-error');
+      if (isProbing) {
+        emergencyStop();
+        alert("ALARM from controller:\n\n" + trimmed + "\n\nProbing aborted. Machine may need reset/unlock.");
+      }
+      return;
+    }
+    
+    if (trimmed.includes("[MSG:ERR") || trimmed.includes("[MSG:Err")) {
+      log("*** ERROR MESSAGE FROM CONTROLLER ***", 'log-error');
+      if (isProbing) {
+        emergencyStop();
+        alert("Error message from controller:\n\n" + trimmed + "\n\nProbing aborted.");
+      }
+      return;
+    }
+
+    // ===== CHECK FOR PROBE RESULT =====
+    const prb = parsePRBLine(trimmed);
+    if (prb && isProbing) {
+      // Check if probe triggered successfully
+      if (!prb.success) {
+        log("*** PROBE FAILURE - DID NOT TRIGGER! ***", 'log-error');
+        log("Probe reached target depth without contact.", 'log-error');
+        emergencyStop();
+        alert("PROBE FAILURE!\n\n" +
+              "The probe reached the target depth WITHOUT triggering.\n\n" +
+              "This could mean:\n" +
+              "- Probe is not making contact with surface\n" +
+              "- Probe wiring issue\n" +
+              "- Z height set incorrectly\n" +
+              "- PROBE_DEPTH too shallow\n\n" +
+              "Check probe and machine state before continuing!");
+        return;
+      }
+      
+      // Successful probe
+      probeData.push({ x: prb.x, y: prb.y, z: prb.z });
+      updateProgress(probeData.length, expectedProbes);
+      log(`Probe ${probeData.length}/${expectedProbes}: X=${prb.x.toFixed(3)} Y=${prb.y.toFixed(3)} Z=${prb.z.toFixed(3)}`, 'log-success');
+      
+      // Check if all probes collected (but don't stop - need to return home)
+      if (probeData.length >= expectedProbes && !probesComplete) {
+        log("All probe points collected! Returning to home position...", 'log-success');
+        probesComplete = true;
+        updateProgress(probeData.length, expectedProbes, '- Returning home...');
+      }
+    }
+
+    // ===== SEND NEXT COMMAND ON "ok" =====
+    if (isProbing && lowerLine === "ok") {
+      resetWatchdog();  // Got response, reset timer
+      
+      // Check if all commands have been sent
+      if (sentIndex >= sentCommands.length) {
+        // All done - probing complete and returned home
+        log("Probe sequence complete. Returned to home position.", 'log-success');
+        clearWatchdog();
+        isProbing = false;
+        probesComplete = false;
+        document.getElementById('abortBtn').disabled = true;
+        document.getElementById('startProbeBtn').disabled = false;
+        document.getElementById('exportCsvBtn').disabled = false;
+        document.getElementById('exportHtmlBtn').disabled = false;
+        updateStatus('connected');
+        updateProgress(probeData.length, expectedProbes, '- COMPLETE');
+        buildResults();
+      } else {
+        sendNextCommand();
+      }
+    }
+  }
+}
+
+// ===== RESULTS PROCESSING =====
+function buildResults() {
+  if (!probeData.length) {
+    document.getElementById('resultsText').textContent = "No probe data collected.";
+    document.getElementById('heatmap').innerHTML = "";
+    return;
+  }
+
+  const numSlots = SLOT_X.length;
+  const numY = Y_POSITIONS.length;
+
+  // Build grid: Z[slot][yIdx]
+  const grid = [];
+  let idx = 0;
+  for (let s = 0; s < numSlots; s++) {
+    const col = [];
+    for (let y = 0; y < numY; y++) {
+      if (idx < probeData.length) {
+        col.push(probeData[idx].z);
+        idx++;
+      } else {
+        col.push(null);
+      }
+    }
+    grid.push(col);
+  }
+
+  // Reference point and statistics
+  const refZ = (grid[0] && grid[0][0] != null) ? grid[0][0] : 0;
+  const allZ = [];
+  for (const col of grid) {
+    for (const z of col) {
+      if (z != null) allZ.push(z);
+    }
+  }
+  
+  if (!allZ.length) {
+    document.getElementById('resultsText').textContent = "No valid Z values.";
+    document.getElementById('heatmap').innerHTML = "";
+    return;
+  }
+  
+  const minZ = Math.min(...allZ);
+  const maxZ = Math.max(...allZ);
+  const rangeZ = maxZ - minZ;
+  const avgZ = allZ.reduce((a, b) => a + b, 0) / allZ.length;
+
+  // Build text summary
+  let out = "";
+  out += "HEIGHT MAP RESULTS\n";
+  out += "==================\n\n";
+  out += `Timestamp: ${new Date().toISOString()}\n`;
+  out += `Probe points collected: ${probeData.length} / ${expectedProbes}\n\n`;
+  out += `Reference Z (first point): ${refZ.toFixed(3)} mm\n`;
+  out += `Min Z: ${minZ.toFixed(3)} mm\n`;
+  out += `Max Z: ${maxZ.toFixed(3)} mm\n`;
+  out += `Range: ${rangeZ.toFixed(3)} mm\n`;
+  out += `Average Z: ${avgZ.toFixed(3)} mm\n\n`;
+
+  // Find highest/lowest points
+  out += "--- ANALYSIS ---\n";
+  let highestInfo = "", lowestInfo = "";
+  
+  for (let s = 0; s < numSlots; s++) {
+    for (let yIdx = 0; yIdx < numY; yIdx++) {
+      const z = grid[s][yIdx];
+      if (z == null) continue;
+      if (z === maxZ) {
+        highestInfo = `Highest: Slot ${s + 1} (X=${SLOT_X[s]}), Y=${Y_POSITIONS[yIdx]} -> ${(maxZ - refZ).toFixed(3)} mm from ref`;
+      }
+      if (z === minZ) {
+        lowestInfo = `Lowest:  Slot ${s + 1} (X=${SLOT_X[s]}), Y=${Y_POSITIONS[yIdx]} -> ${(minZ - refZ).toFixed(3)} mm from ref`;
+      }
+    }
+  }
+  out += highestInfo + "\n";
+  out += lowestInfo + "\n";
+  out += `\nTotal variation: ${rangeZ.toFixed(3)} mm\n\n`;
+  
+  // Assessment
+  if (rangeZ > 0.15) {
+    out += "âš  SIGNIFICANT VARIATION - shimming/leveling recommended\n";
+  } else if (rangeZ > 0.08) {
+    out += "âš¡ Moderate variation - may affect precision work\n";
+  } else {
+    out += "âœ“ Table is reasonably flat for most operations\n";
+  }
+
+  document.getElementById('resultsText').textContent = out;
+
+  // Build heatmap table
+  buildHeatmapTable(grid, numSlots, numY, refZ);
+}
+
+function buildHeatmapTable(grid, numSlots, numY, refZ) {
+  // Color function
+  function colorFor(z) {
+    if (z == null) return "#666666";
+    const dev = z - refZ;
+    
+    // Near zero - white
+    if (Math.abs(dev) < 0.02) return "#ffffff";
+    
+    // Positive (high) - red tones
+    if (dev > 0) {
+      const intensity = Math.min(dev / 0.15, 1.0);
+      const r = 255;
+      const g = Math.round(255 - intensity * 120);
+      const b = Math.round(255 - intensity * 120);
+      return `rgb(${r},${g},${b})`;
+    } 
+    // Negative (low) - blue/cyan tones  
+    else {
+      const intensity = Math.min(Math.abs(dev) / 0.15, 1.0);
+      const r = Math.round(255 - intensity * 100);
+      const g = Math.round(255 - intensity * 60);
+      const b = 255;
+      return `rgb(${r},${g},${b})`;
+    }
+  }
+
+  // Build table HTML - Y reversed so back of machine (high Y) is at top
+  let html = '<table class="probe"><thead><tr><th>Y \\ Slot</th>';
+  for (let s = 0; s < numSlots; s++) {
+    html += `<th>Slot ${s + 1}<br>X=${SLOT_X[s]}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  // Rows from high Y (back) to low Y (front)
+  for (let row = numY - 1; row >= 0; row--) {
+    const yVal = Y_POSITIONS[row];
+    html += `<tr><th>Y=${yVal}</th>`;
+    for (let s = 0; s < numSlots; s++) {
+      const z = grid[s][row];
+      if (z == null) {
+        html += '<td style="background:#666;color:#fff;">N/A</td>';
+      } else {
+        const dev = z - refZ;
+        const color = colorFor(z);
+        // Text color: dark for light backgrounds
+        const textColor = (Math.abs(dev) < 0.05) ? '#000' : '#000';
+        html += `<td style="background:${color};color:${textColor};">${dev >= 0 ? '+' : ''}${dev.toFixed(3)}</td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+
+  // Legend
+  html += '<div style="margin-top: 0.5rem; font-size: 0.85rem;">';
+  html += '<strong>Legend:</strong> ';
+  html += '<span style="background:#9df;padding:2px 8px;margin:0 4px;">Low (blue)</span>';
+  html += '<span style="background:#fff;border:1px solid #ccc;padding:2px 8px;margin:0 4px;">Reference (white)</span>';
+  html += '<span style="background:#f99;padding:2px 8px;margin:0 4px;">High (red)</span>';
+  html += '</div>';
+  html += '<div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">';
+  html += 'Orientation: Top = back of machine (high Y), Bottom = front/operator (low Y)';
+  html += '</div>';
+
+  document.getElementById('heatmap').innerHTML = html;
+}
+
+// ===== CSV EXPORT =====
+function generateCSV() {
+  if (!probeData.length) return '';
+  
+  const numSlots = SLOT_X.length;
+  const numY = Y_POSITIONS.length;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  
+  // Build grid: Z[slot][yIdx]
+  const grid = [];
+  let idx = 0;
+  for (let s = 0; s < numSlots; s++) {
+    const col = [];
+    for (let y = 0; y < numY; y++) {
+      if (idx < probeData.length) {
+        col.push(probeData[idx].z);
+        idx++;
+      } else {
+        col.push(null);
+      }
+    }
+    grid.push(col);
+  }
+  
+  const refZ = (grid[0] && grid[0][0] != null) ? grid[0][0] : 0;
+  
+  // Build CSV lines
+  const lines = [];
+  
+  // Header comments
+  lines.push('# T-Slot Height Map Raw Data');
+  lines.push(`# Generated: ${new Date().toISOString()}`);
+  lines.push(`# Probe points: ${probeData.length}`);
+  lines.push('');
+  
+  // Column headers
+  const slotHeaders = SLOT_X.map(x => x.toString()).join(',');
+  lines.push(`X,Y,Z,,Y,${slotHeaders}`);
+  
+  // Calculate rows needed
+  const rawRows = probeData.length;
+  const gridRows = numY + 1 + numY;  // raw grid + blank + deviation grid
+  const totalRows = Math.max(rawRows, gridRows);
+  
+  for (let rowIdx = 0; rowIdx < totalRows; rowIdx++) {
+    const parts = [];
+    
+    // Left side: raw data (columns 0-2)
+    if (rowIdx < probeData.length) {
+      const p = probeData[rowIdx];
+      parts.push(p.x.toFixed(3), p.y.toFixed(3), p.z.toFixed(3));
+    } else {
+      parts.push('', '', '');
+    }
+    
+    // Gap column
+    parts.push('');
+    
+    // Right side: grids
+    if (rowIdx < numY) {
+      // Raw Z grid - Y reversed (highest Y at top = back of machine)
+      const yIdx = numY - 1 - rowIdx;
+      const yVal = Y_POSITIONS[yIdx];
+      parts.push(yVal.toString());
+      for (let s = 0; s < numSlots; s++) {
+        const z = grid[s][yIdx];
+        parts.push(z != null ? z.toFixed(3) : '');
+      }
+    } else if (rowIdx === numY) {
+      // Blank/label row
+      parts.push('Deviation');
+      for (let s = 0; s < numSlots; s++) parts.push('');
+    } else if (rowIdx < numY + 1 + numY) {
+      // Deviation grid - Y reversed
+      const devRow = rowIdx - numY - 1;
+      const yIdx = numY - 1 - devRow;
+      const yVal = Y_POSITIONS[yIdx];
+      parts.push(yVal.toString());
+      for (let s = 0; s < numSlots; s++) {
+        const z = grid[s][yIdx];
+        if (z != null) {
+          const dev = z - refZ;
+          parts.push((dev >= 0 ? '+' : '') + dev.toFixed(3));
+        } else {
+          parts.push('');
+        }
+      }
+    } else {
+      // Empty row
+      parts.push('');
+      for (let s = 0; s < numSlots; s++) parts.push('');
+    }
+    
+    lines.push(parts.join(','));
+  }
+  
+  return lines.join('\n');
+}
+
+function exportCSV() {
+  const csv = generateCSV();
+  if (!csv) {
+    alert('No data to export.');
+    return;
+  }
+  
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '').slice(0, 15);
+  const filename = `heightmap_${timestamp}.csv`;
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  log(`Exported: ${filename}`, 'log-success');
+}
+
+function exportHTMLReport() {
+  if (!probeData.length) {
+    alert('No data to export.');
+    return;
+  }
+  
+  const numSlots = SLOT_X.length;
+  const numY = Y_POSITIONS.length;
+  
+  // Build grid
+  const grid = [];
+  let idx = 0;
+  for (let s = 0; s < numSlots; s++) {
+    const col = [];
+    for (let y = 0; y < numY; y++) {
+      if (idx < probeData.length) {
+        col.push(probeData[idx].z);
+        idx++;
+      } else {
+        col.push(null);
+      }
+    }
+    grid.push(col);
+  }
+  
+  const refZ = (grid[0] && grid[0][0] != null) ? grid[0][0] : 0;
+  const allZ = grid.flat().filter(z => z != null);
+  const minZ = Math.min(...allZ);
+  const maxZ = Math.max(...allZ);
+  const rangeZ = maxZ - minZ;
+  
+  // Color function
+  function colorFor(z) {
+    if (z == null) return '#666666';
+    const dev = z - refZ;
+    if (Math.abs(dev) < 0.02) return '#ffffff';
+    if (dev > 0) {
+      const intensity = Math.min(dev / 0.15, 1.0);
+      return `rgb(255,${Math.round(255 - intensity * 120)},${Math.round(255 - intensity * 120)})`;
+    } else {
+      const intensity = Math.min(Math.abs(dev) / 0.15, 1.0);
+      return `rgb(${Math.round(255 - intensity * 100)},${Math.round(255 - intensity * 60)},255)`;
+    }
+  }
+  
+  // Build HTML report
+  let html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Height Map Report</title>
+<style>
+body { font-family: sans-serif; margin: 2rem; }
+table { border-collapse: collapse; margin: 1rem 0; }
+th, td { border: 1px solid #999; padding: 6px 10px; text-align: center; }
+th { background: #ddd; }
+.summary { background: #f5f5f5; padding: 1rem; margin: 1rem 0; }
+</style></head><body>
+<h1>T-Slot Height Map Report</h1>
+<div class="summary">
+<strong>Generated:</strong> ${new Date().toISOString()}<br>
+<strong>Probe Points:</strong> ${probeData.length}<br>
+<strong>Reference Z:</strong> ${refZ.toFixed(3)} mm<br>
+<strong>Range:</strong> ${rangeZ.toFixed(3)} mm (Min: ${minZ.toFixed(3)}, Max: ${maxZ.toFixed(3)})<br>
+<strong>Slot X positions:</strong> ${SLOT_X.join(', ')}<br>
+<strong>Y positions:</strong> ${Y_POSITIONS.join(', ')}
+</div>
+<h2>Deviation Heat Map</h2>
+<p>Orientation: Top = back of machine (high Y), Bottom = front/operator (low Y)</p>
+<table><thead><tr><th>Y \\ Slot</th>`;
+  
+  for (let s = 0; s < numSlots; s++) {
+    html += `<th>Slot ${s + 1}<br>X=${SLOT_X[s]}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+  
+  for (let row = numY - 1; row >= 0; row--) {
+    html += `<tr><th>Y=${Y_POSITIONS[row]}</th>`;
+    for (let s = 0; s < numSlots; s++) {
+      const z = grid[s][row];
+      if (z == null) {
+        html += '<td style="background:#666;color:#fff;">N/A</td>';
+      } else {
+        const dev = z - refZ;
+        html += `<td style="background:${colorFor(z)};">${dev >= 0 ? '+' : ''}${dev.toFixed(3)}</td>`;
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  html += '<p><strong>Legend:</strong> <span style="background:#9df;padding:2px 8px;">Low (blue)</span> <span style="background:#fff;border:1px solid #ccc;padding:2px 8px;">Reference (white)</span> <span style="background:#f99;padding:2px 8px;">High (red)</span></p>';
+  html += '</body></html>';
+  
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '').slice(0, 15);
+  const filename = `heightmap_${timestamp}.html`;
+  
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  log(`Exported: ${filename}`, 'log-success');
+}
+
+// ===== UI EVENT HANDLERS =====
+document.getElementById('connectBtn').addEventListener('click', connect);
+document.getElementById('disconnectBtn').addEventListener('click', disconnect);
+document.getElementById('startProbeBtn').addEventListener('click', startProbing);
+document.getElementById('abortBtn').addEventListener('click', abortProbing);
+document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+document.getElementById('exportHtmlBtn').addEventListener('click', exportHTMLReport);
+
+// Warn before leaving page during probing
+window.addEventListener('beforeunload', (e) => {
+  if (isProbing) {
+    e.preventDefault();
+    e.returnValue = 'Probing is in progress. The machine will continue running if you leave!';
+    return e.returnValue;
+  }
+});
+
+// Initial state
+updateProgress(0, 0, '');
+</script>
+</body>
+</html>

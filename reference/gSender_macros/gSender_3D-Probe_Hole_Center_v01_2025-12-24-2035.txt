@@ -1,0 +1,262 @@
+(gSender 3D-Probe 4-Point Hole Center)
+(Position probe inside hole at approximate center with tip about 2 ABOVE hole before starting.)
+(By design , this Macro will NOT auto-set the XY coordinates when complete.)
+(You MUST true up the probe first to make sure the tip is straight.)
+(Set the max distance to probe outward based on the hole you're probing.)
+; John Sparks 2025-12-25
+; v01
+
+; *** USER CONFIGURATION ***
+%PROBE_TIP_DIA = 2.0        ; Probe tip diameter in mm
+%PROBE_FEEDRATE = 150        ; Slow, safe probe feedrate
+%PROBE_DISTANCE = 15.0      ; Maximum distance to probe outward
+%RETRACT_DISTANCE = 1.0     ; Small retract after each probe
+
+; Wait for planner
+%wait
+
+; Backup modal state
+%WCS = modal.wcs
+%PLANE = modal.plane
+%UNITS = modal.units
+%DISTANCE = modal.distance
+%FEEDRATE = modal.feedrate
+%SPINDLE = modal.spindle
+%COOLANT = modal.coolant
+
+(MSG, === 4-Point Hole Center Probe - Improved ===)
+(MSG, Starting from inside hole...)
+(MSG, Double-probing each direction for accuracy...)
+
+; Setup mode
+G21     ; Metric units
+M5      ; Stop spindle
+G91     ; Incremental mode
+
+; Store approximate center position
+%CENTER_X_APPROX = posx
+%CENTER_Y_APPROX = posy
+%CENTER_Z = posz
+
+(MSG, Approximate center: X[CENTER_X_APPROX] Y[CENTER_Y_APPROX])
+
+; ===============================================
+; X-AXIS PROBING SEQUENCE (EAST & WEST)
+; ===============================================
+
+; *** PROBE POINT 1A: +X (East) - First Pass ***
+(MSG, Probing +X wall - Pass 1...)
+
+; Probe outward in +X direction until hitting wall
+G38.2 X[PROBE_DISTANCE] F[PROBE_FEEDRATE]
+%wait
+
+; Store first probe result
+%P1A_X = posx
+%P1A_Y = posy
+
+(MSG, Point 1A: X[P1A_X] Y[P1A_Y])
+
+; SHORT retract for second probe (not back to center)
+G0 X[-1.5]  ; Move just 1.5mm back from wall
+
+; *** PROBE POINT 1B: +X (East) - Second Pass ***
+(MSG, Probing +X wall - Pass 2...)
+
+; Probe outward SHORT distance for precision measurement
+G38.2 X[3.0] F[PROBE_FEEDRATE]
+%wait
+
+; Store second probe result
+%P1B_X = posx
+%P1B_Y = posy
+
+(MSG, Point 1B: X[P1B_X] Y[P1B_Y])
+
+; Calculate averaged East result
+%P1_X = (P1A_X + P1B_X) / 2
+%P1_Y = (P1A_Y + P1B_Y) / 2
+
+(MSG, Point 1 Average: X[P1_X] Y[P1_Y])
+
+; Final retract and return to approximate center
+G0 X[-RETRACT_DISTANCE]
+%RETURN_X1 = CENTER_X_APPROX - posx
+G0 X[RETURN_X1]
+
+; *** PROBE POINT 2A: -X (West) - First Pass ***
+(MSG, Probing -X wall - Pass 1...)
+
+; Probe outward in -X direction
+G38.2 X[-PROBE_DISTANCE] F[PROBE_FEEDRATE]
+%wait
+
+; Store first probe result
+%P2A_X = posx
+%P2A_Y = posy
+
+(MSG, Point 2A: X[P2A_X] Y[P2A_Y])
+
+; SHORT retract for second probe (not back to center)
+G0 X[1.5]  ; Move just 1.5mm back from wall
+
+; *** PROBE POINT 2B: -X (West) - Second Pass ***
+(MSG, Probing -X wall - Pass 2...)
+
+; Probe outward SHORT distance for precision measurement
+G38.2 X[-3.0] F[PROBE_FEEDRATE]
+%wait
+
+; Store second probe result
+%P2B_X = posx
+%P2B_Y = posy
+
+(MSG, Point 2B: X[P2B_X] Y[P2B_Y])
+
+; Calculate averaged West result
+%P2_X = (P2A_X + P2B_X) / 2
+%P2_Y = (P2A_Y + P2B_Y) / 2
+
+(MSG, Point 2 Average: X[P2_X] Y[P2_Y])
+
+; *** CALCULATE X-CENTER AND MOVE THERE ***
+%X_CENTER = (P1_X + P2_X) / 2
+
+(MSG, X-Center calculated: [X_CENTER])
+(MSG, Moving to X-center for Y-axis probing...)
+
+; Move to X-center position
+G90  ; Switch to absolute mode temporarily
+G0 X[X_CENTER]
+G91  ; Back to incremental mode
+
+; ===============================================
+; Y-AXIS PROBING SEQUENCE (NORTH & SOUTH)
+; ===============================================
+
+; *** PROBE POINT 3A: +Y (North) - First Pass ***
+(MSG, Probing +Y wall - Pass 1...)
+
+; Probe outward in +Y direction
+G38.2 Y[PROBE_DISTANCE] F[PROBE_FEEDRATE]
+%wait
+
+; Store first probe result
+%P3A_X = posx
+%P3A_Y = posy
+
+(MSG, Point 3A: X[P3A_X] Y[P3A_Y])
+
+; SHORT retract for second probe (not back to center)
+G0 Y[-1.5]  ; Move just 1.5mm back from wall
+
+; *** PROBE POINT 3B: +Y (North) - Second Pass ***
+(MSG, Probing +Y wall - Pass 2...)
+
+; Probe outward SHORT distance for precision measurement
+G38.2 Y[3.0] F[PROBE_FEEDRATE]
+%wait
+
+; Store second probe result
+%P3B_X = posx
+%P3B_Y = posy
+
+(MSG, Point 3B: X[P3B_X] Y[P3B_Y])
+
+; Calculate averaged North result
+%P3_X = (P3A_X + P3B_X) / 2
+%P3_Y = (P3A_Y + P3B_Y) / 2
+
+(MSG, Point 3 Average: X[P3_X] Y[P3_Y])
+
+; Final retract and return to Y-center
+G0 Y[-RETRACT_DISTANCE]
+%RETURN_Y3 = CENTER_Y_APPROX - posy
+G0 Y[RETURN_Y3]
+
+; *** PROBE POINT 4A: -Y (South) - First Pass ***
+(MSG, Probing -Y wall - Pass 1...)
+
+; Probe outward in -Y direction
+G38.2 Y[-PROBE_DISTANCE] F[PROBE_FEEDRATE]
+%wait
+
+; Store first probe result
+%P4A_X = posx
+%P4A_Y = posy
+
+(MSG, Point 4A: X[P4A_X] Y[P4A_Y])
+
+; SHORT retract for second probe (not back to center)
+G0 Y[1.5]  ; Move just 1.5mm back from wall
+
+; *** PROBE POINT 4B: -Y (South) - Second Pass ***
+(MSG, Probing -Y wall - Pass 2...)
+
+; Probe outward SHORT distance for precision measurement
+G38.2 Y[-3.0] F[PROBE_FEEDRATE]
+%wait
+
+; Store second probe result
+%P4B_X = posx
+%P4B_Y = posy
+
+(MSG, Point 4B: X[P4B_X] Y[P4B_Y])
+
+; Calculate averaged South result
+%P4_X = (P4A_X + P4B_X) / 2
+%P4_Y = (P4A_Y + P4B_Y) / 2
+
+(MSG, Point 4 Average: X[P4_X] Y[P4_Y])
+
+; ===============================================
+; CALCULATE FINAL TRUE CENTER
+; ===============================================
+
+; Calculate true center using averaged results
+%TRUE_CENTER_X = (P1_X + P2_X) / 2
+%TRUE_CENTER_Y = (P3_Y + P4_Y) / 2
+
+; Calculate measured diameter
+%DIAMETER_X = Math.abs(P1_X - P2_X) + PROBE_TIP_DIA
+%DIAMETER_Y = Math.abs(P3_Y - P4_Y) + PROBE_TIP_DIA
+%AVG_DIAMETER = (DIAMETER_X + DIAMETER_Y) / 2
+
+; Calculate accuracy check
+%CENTER_ERROR_X = Math.abs(TRUE_CENTER_X - CENTER_X_APPROX)
+%CENTER_ERROR_Y = Math.abs(TRUE_CENTER_Y - CENTER_Y_APPROX)
+
+; Calculate probe repeatability (how consistent the double probes were)
+%REPEAT_X_EAST = Math.abs(P1A_X - P1B_X)
+%REPEAT_X_WEST = Math.abs(P2A_X - P2B_X)
+%REPEAT_Y_NORTH = Math.abs(P3A_Y - P3B_Y)
+%REPEAT_Y_SOUTH = Math.abs(P4A_Y - P4B_Y)
+%MAX_REPEATABILITY = Math.max(Math.max(REPEAT_X_EAST, REPEAT_X_WEST), Math.max(REPEAT_Y_NORTH, REPEAT_Y_SOUTH))
+
+(MSG, === AVERAGED RESULTS ===)
+(MSG, Final Averaged Contact Points:)
+(MSG,   East:  X[P1_X] Y[P1_Y])
+(MSG,   West:  X[P2_X] Y[P2_Y])
+(MSG,   North: X[P3_X] Y[P3_Y])
+(MSG,   South: X[P4_X] Y[P4_Y])
+(MSG, True Center: X[TRUE_CENTER_X] Y[TRUE_CENTER_Y])
+(MSG, Diameter X: [DIAMETER_X]mm Y: [DIAMETER_Y]mm)
+(MSG, Average diameter: [AVG_DIAMETER]mm)
+(MSG, Center correction: X[CENTER_ERROR_X] Y[CENTER_ERROR_Y])
+(MSG, Max probe repeatability: [MAX_REPEATABILITY]mm)
+
+; *** MOVE TO TRUE CENTER ***
+(MSG, Moving to final true center...)
+
+; Switch to absolute mode
+G90
+
+; Move directly to calculated center using absolute coordinates
+G0 X[TRUE_CENTER_X] Y[TRUE_CENTER_Y]
+
+(MSG, === IMPROVED HOLE CENTER PROBE COMPLETE ===)
+(MSG, Positioned at averaged geometric center)
+(MSG, Use 'G10 L20 P1 X0 Y0' to set origin here)
+
+; Restore modal state
+[WCS] [PLANE] [UNITS] [DISTANCE] [FEEDRATE] [SPINDLE] [COOLANT]

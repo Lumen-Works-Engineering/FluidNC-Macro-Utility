@@ -1,0 +1,20 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Google Drive duplicates
+*\ (1).html
+*\ (2).html
+*\ (3).html

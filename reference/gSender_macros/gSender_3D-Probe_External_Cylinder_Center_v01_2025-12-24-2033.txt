@@ -1,0 +1,369 @@
+(gSender 3D-Probe 4-Point External Cylinder Center)
+(Position probe 2mm above approximate center of cylinder)
+(By design , this Macro will NOT auto-set the XY coordinates when complete.)
+(You MUST true up the probe first to make sure the tip is straight.)
+(Set the max distance to probe outward based on the hole you're probing.)
+; John Sparks 2025-12-25
+; v01
+
+; *** USER CONFIGURATION ***
+%PROBE_TIP_DIA = 2.0        ; Probe tip diameter in mm
+%CYLINDER_DIAMETER = 26.0   ; Approximate cylinder diameter in mm
+%PROBE_FEEDRATE = 150        ; Probe feed rate in mm/min
+%SAFE_HEIGHT = 5.0          ; Height above cylinder for moves
+%PROBE_DEPTH = 5.0          ; How deep to lower probe below safe height
+%PROBE_DISTANCE_OUT = 15.0  ; How far out from center to start probing
+
+; *** CALCULATED VALUES ***
+%CYLINDER_RADIUS = CYLINDER_DIAMETER / 2
+%PROBE_RADIUS = PROBE_TIP_DIA / 2
+
+; Wait for planner
+%wait
+
+; Backup modal state
+%WCS = modal.wcs
+%PLANE = modal.plane
+%UNITS = modal.units
+%DISTANCE = modal.distance
+%FEEDRATE = modal.feedrate
+%SPINDLE = modal.spindle
+%COOLANT = modal.coolant
+
+(MSG, === External Cylinder Center Probe - Improved ===)
+(MSG, Cylinder diameter: [CYLINDER_DIAMETER]mm)
+(MSG, Probe depth: [PROBE_DEPTH]mm)
+(MSG, Probe distance out: [PROBE_DISTANCE_OUT]mm)
+(MSG, Double-probing each direction for accuracy...)
+
+; Setup mode
+G21     ; Metric units
+M5      ; Stop spindle
+G90     ; Absolute mode
+
+; Store starting position (approximate center, above cylinder)
+%CENTER_X_APPROX = posx
+%CENTER_Y_APPROX = posy
+%SAFE_Z = posz
+
+(MSG, Starting above center: X[CENTER_X_APPROX] Y[CENTER_Y_APPROX] Z[SAFE_Z])
+
+; ===============================================
+; X-AXIS PROBING SEQUENCE (EAST & WEST)
+; ===============================================
+
+; *** PROBE POINT 1A: 0Â° (East side) - First Pass ***
+(MSG, Probing East side - Pass 1...)
+
+; Move to probe position 1 (East of cylinder)
+%PROBE1_X = CENTER_X_APPROX + PROBE_DISTANCE_OUT
+%PROBE1_Y = CENTER_Y_APPROX
+G0 X[PROBE1_X] Y[PROBE1_Y]
+
+; Lower to probe depth
+G0 Z[SAFE_Z - PROBE_DEPTH]
+
+; Probe inward toward cylinder center
+G38.2 X[CENTER_X_APPROX - PROBE_DISTANCE_OUT] F[PROBE_FEEDRATE]
+%wait
+
+; Store first contact point
+%P1A_X = posx
+%P1A_Y = posy
+%P1A_Z = posz
+
+(MSG, Point 1A contact: X[P1A_X] Y[P1A_Y])
+
+; Check probe travel
+%P1A_TRAVEL = Math.abs(P1A_X - PROBE1_X)
+(MSG, Point 1A travel distance: [P1A_TRAVEL]mm)
+
+; SHORT retract for second probe (not full distance)
+G91  ; Switch to incremental mode
+G0 X3.0  ; Move just 3mm away from cylinder for second probe
+G90  ; Back to absolute mode
+
+; *** PROBE POINT 1B: 0Â° (East side) - Second Pass ***
+(MSG, Probing East side - Pass 2...)
+
+; Probe inward SHORT distance for precision measurement
+G38.2 X[P1A_X - 5.0] F[PROBE_FEEDRATE]
+%wait
+
+; Store second contact point
+%P1B_X = posx
+%P1B_Y = posy
+%P1B_Z = posz
+
+(MSG, Point 1B contact: X[P1B_X] Y[P1B_Y])
+
+; Calculate averaged East result
+%P1_X = (P1A_X + P1B_X) / 2
+%P1_Y = (P1A_Y + P1B_Y) / 2
+%P1_Z = (P1A_Z + P1B_Z) / 2
+
+(MSG, Point 1 Average: X[P1_X] Y[P1_Y])
+
+; Final retract away from cylinder before lifting
+G91  ; Switch to incremental mode
+G0 X2.0  ; Move 2mm away from cylinder
+G90  ; Back to absolute mode
+
+; Retract to safe height
+G0 Z[SAFE_Z]
+
+; *** PROBE POINT 3A: 180Â° (West side) - First Pass ***
+(MSG, Probing West side - Pass 1...)
+
+; Calculate 180Â° position (straight left)
+%PROBE3_X = CENTER_X_APPROX - PROBE_DISTANCE_OUT
+%PROBE3_Y = CENTER_Y_APPROX
+G0 X[PROBE3_X] Y[PROBE3_Y]
+
+; Lower to probe depth
+G0 Z[SAFE_Z - PROBE_DEPTH]
+
+; Probe inward toward cylinder center (straight right)
+G38.2 X[CENTER_X_APPROX + PROBE_DISTANCE_OUT] F[PROBE_FEEDRATE]
+%wait
+
+; Store first contact point
+%P3A_X = posx
+%P3A_Y = posy
+%P3A_Z = posz
+
+(MSG, Point 3A contact: X[P3A_X] Y[P3A_Y])
+
+; Check probe travel
+%P3A_TRAVEL = Math.abs(P3A_X - PROBE3_X)
+(MSG, Point 3A travel distance: [P3A_TRAVEL]mm)
+
+; SHORT retract for second probe (not full distance)
+G91  ; Switch to incremental mode
+G0 X-3.0  ; Move just 3mm away from cylinder for second probe
+G90  ; Back to absolute mode
+
+; *** PROBE POINT 3B: 180Â° (West side) - Second Pass ***
+(MSG, Probing West side - Pass 2...)
+
+; Probe inward SHORT distance for precision measurement
+G38.2 X[P3A_X + 5.0] F[PROBE_FEEDRATE]
+%wait
+
+; Store second contact point
+%P3B_X = posx
+%P3B_Y = posy
+%P3B_Z = posz
+
+(MSG, Point 3B contact: X[P3B_X] Y[P3B_Y])
+
+; Calculate averaged West result
+%P3_X = (P3A_X + P3B_X) / 2
+%P3_Y = (P3A_Y + P3B_Y) / 2
+%P3_Z = (P3A_Z + P3B_Z) / 2
+
+(MSG, Point 3 Average: X[P3_X] Y[P3_Y])
+
+; *** CALCULATE X-CENTER AND MOVE THERE ***
+%X_CENTER = (P1_X + P3_X) / 2
+
+(MSG, X-Center calculated: [X_CENTER])
+(MSG, Moving to X-center for Y-axis probing...)
+
+; RETRACT AWAY FROM CYLINDER BEFORE LIFTING
+G91  ; Switch to incremental mode
+G0 X-2.0  ; Move away from cylinder (safe distance)
+G90  ; Back to absolute mode
+
+; FIRST - Retract to safe height
+G0 Z[SAFE_Z]
+
+; THEN - Move to X-center position at safe height
+G0 X[X_CENTER] Y[CENTER_Y_APPROX]
+
+; ===============================================
+; Y-AXIS PROBING SEQUENCE (NORTH & SOUTH)
+; ===============================================
+
+; *** PROBE POINT 2A: 90Â° (North side) - First Pass ***
+(MSG, Probing North side - Pass 1...)
+
+; Calculate 90Â° position (straight up) from X-center
+%PROBE2_X = X_CENTER
+%PROBE2_Y = CENTER_Y_APPROX + PROBE_DISTANCE_OUT
+G0 X[PROBE2_X] Y[PROBE2_Y]
+
+; Lower to probe depth
+G0 Z[SAFE_Z - PROBE_DEPTH]
+
+; Probe inward toward cylinder center (straight down)
+G38.2 Y[CENTER_Y_APPROX - PROBE_DISTANCE_OUT] F[PROBE_FEEDRATE]
+%wait
+
+; Store first contact point
+%P2A_X = posx
+%P2A_Y = posy
+%P2A_Z = posz
+
+(MSG, Point 2A contact: X[P2A_X] Y[P2A_Y])
+
+; Check probe travel
+%P2A_TRAVEL = Math.abs(P2A_Y - PROBE2_Y)
+(MSG, Point 2A travel distance: [P2A_TRAVEL]mm)
+
+; SHORT retract for second probe (not full distance)
+G91  ; Switch to incremental mode
+G0 Y3.0  ; Move just 3mm away from cylinder for second probe
+G90  ; Back to absolute mode
+
+; *** PROBE POINT 2B: 90Â° (North side) - Second Pass ***
+(MSG, Probing North side - Pass 2...)
+
+; Probe inward SHORT distance for precision measurement
+G38.2 Y[P2A_Y - 5.0] F[PROBE_FEEDRATE]
+%wait
+
+; Store second contact point
+%P2B_X = posx
+%P2B_Y = posy
+%P2B_Z = posz
+
+(MSG, Point 2B contact: X[P2B_X] Y[P2B_Y])
+
+; Calculate averaged North result
+%P2_X = (P2A_X + P2B_X) / 2
+%P2_Y = (P2A_Y + P2B_Y) / 2
+%P2_Z = (P2A_Z + P2B_Z) / 2
+
+(MSG, Point 2 Average: X[P2_X] Y[P2_Y])
+
+; Final retract away from cylinder before lifting
+G91  ; Switch to incremental mode
+G0 Y2.0  ; Move away from cylinder
+G90  ; Back to absolute mode
+
+; Retract to safe height
+G0 Z[SAFE_Z]
+
+; *** PROBE POINT 4A: 270Â° (South side) - First Pass ***
+(MSG, Probing South side - Pass 1...)
+
+; Calculate 270Â° position (straight down) from X-center
+%PROBE4_X = X_CENTER
+%PROBE4_Y = CENTER_Y_APPROX - PROBE_DISTANCE_OUT
+G0 X[PROBE4_X] Y[PROBE4_Y]
+
+; Lower to probe depth
+G0 Z[SAFE_Z - PROBE_DEPTH]
+
+; Probe inward toward cylinder center (straight up)
+G38.2 Y[CENTER_Y_APPROX + PROBE_DISTANCE_OUT] F[PROBE_FEEDRATE]
+%wait
+
+; Store first contact point
+%P4A_X = posx
+%P4A_Y = posy
+%P4A_Z = posz
+
+(MSG, Point 4A contact: X[P4A_X] Y[P4A_Y])
+
+; Check probe travel
+%P4A_TRAVEL = Math.abs(P4A_Y - PROBE4_Y)
+(MSG, Point 4A travel distance: [P4A_TRAVEL]mm)
+
+; SHORT retract for second probe (not full distance)
+G91  ; Switch to incremental mode
+G0 Y-3.0  ; Move just 3mm away from cylinder for second probe
+G90  ; Back to absolute mode
+
+; *** PROBE POINT 4B: 270Â° (South side) - Second Pass ***
+(MSG, Probing South side - Pass 2...)
+
+; Probe inward SHORT distance for precision measurement
+G38.2 Y[P4A_Y + 5.0] F[PROBE_FEEDRATE]
+%wait
+
+; Store second contact point
+%P4B_X = posx
+%P4B_Y = posy
+%P4B_Z = posz
+
+(MSG, Point 4B contact: X[P4B_X] Y[P4B_Y])
+
+; Calculate averaged South result
+%P4_X = (P4A_X + P4B_X) / 2
+%P4_Y = (P4A_Y + P4B_Y) / 2
+%P4_Z = (P4A_Z + P4B_Z) / 2
+
+(MSG, Point 4 Average: X[P4_X] Y[P4_Y])
+
+; Final retract away from cylinder before lifting
+G91  ; Switch to incremental mode
+G0 Y-2.0  ; Move away from cylinder
+G90  ; Back to absolute mode
+
+; Retract to safe height
+G0 Z[SAFE_Z]
+
+; ===============================================
+; CALCULATE FINAL TRUE CENTER
+; ===============================================
+
+; Calculate true center using averaged results
+%TRUE_CENTER_X = (P1_X + P3_X) / 2  ; Average of East and West contacts
+%TRUE_CENTER_Y = (P2_Y + P4_Y) / 2  ; Average of North and South contacts
+
+; Calculate measured diameter (like hole center macro)
+%DIAMETER_X = Math.abs(P1_X - P3_X) + PROBE_TIP_DIA
+%DIAMETER_Y = Math.abs(P2_Y - P4_Y) + PROBE_TIP_DIA
+%AVG_DIAMETER = (DIAMETER_X + DIAMETER_Y) / 2
+
+; Calculate how far off the starting position was
+%CENTER_ERROR_X = Math.abs(TRUE_CENTER_X - CENTER_X_APPROX)
+%CENTER_ERROR_Y = Math.abs(TRUE_CENTER_Y - CENTER_Y_APPROX)
+
+; Calculate probe repeatability (how consistent the double probes were)
+%REPEAT_X_EAST = Math.abs(P1A_X - P1B_X)
+%REPEAT_X_WEST = Math.abs(P3A_X - P3B_X)
+%REPEAT_Y_NORTH = Math.abs(P2A_Y - P2B_Y)
+%REPEAT_Y_SOUTH = Math.abs(P4A_Y - P4B_Y)
+%MAX_REPEATABILITY = Math.max(Math.max(REPEAT_X_EAST, REPEAT_X_WEST), Math.max(REPEAT_Y_NORTH, REPEAT_Y_SOUTH))
+
+; *** DISPLAY RESULTS ***
+(MSG, === AVERAGED CYLINDER RESULTS ===)
+(MSG, Final Averaged Contact Points:)
+(MSG,   East:  X[P1_X] Y[P1_Y])
+(MSG,   North: X[P2_X] Y[P2_Y])
+(MSG,   West:  X[P3_X] Y[P3_Y])
+(MSG,   South: X[P4_X] Y[P4_Y])
+(MSG, Calculated True Center: X[TRUE_CENTER_X] Y[TRUE_CENTER_Y])
+(MSG, Measured diameter X: [DIAMETER_X]mm Y: [DIAMETER_Y]mm)
+(MSG, Average diameter: [AVG_DIAMETER]mm)
+(MSG, Expected diameter: [CYLINDER_DIAMETER]mm)
+(MSG, Center correction: X[CENTER_ERROR_X] Y[CENTER_ERROR_Y])
+(MSG, Max probe repeatability: [MAX_REPEATABILITY]mm)
+
+; *** MOVE TO TRUE CENTER ***
+(MSG, Moving to final calculated cylinder center...)
+
+; Move to calculated center position at safe height
+G0 X[TRUE_CENTER_X] Y[TRUE_CENTER_Y] Z[SAFE_Z]
+
+(MSG, === IMPROVED CYLINDER CENTER PROBE COMPLETE ===)
+(MSG, Positioned at averaged geometric center)
+(MSG, Use 'G10 L20 P1 X0 Y0' to set origin here if desired)
+
+; Restore modal state
+[WCS] [PLANE] [UNITS] [DISTANCE] [FEEDRATE] [SPINDLE] [COOLANT]
+
+; ===============================================
+; IMPROVEMENTS IN THIS VERSION:
+; ===============================================
+; 1. Double-probes each direction for better accuracy
+; 2. Averages the two readings for each surface contact
+; 3. Moves to X-center after X-axis probing before Y-axis
+; 4. Y-axis probing starts from true X-center position
+; 5. Reports probe repeatability for quality assessment
+; 6. More accurate final center calculation
+; 7. Enhanced safety with proper retracts before lifting
+; ===============================================
