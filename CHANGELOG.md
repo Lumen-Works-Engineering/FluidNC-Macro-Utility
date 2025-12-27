@@ -5,6 +5,16 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.3] - 2024-12-27
+
+### Fixed
+- **CRITICAL: Hole Probe retract bug** - Removed dangerous retract move after West wall probe
+  - After probing West wall, was retracting WEST (`X-2.000`) instead of staying in place
+  - This pushed probe 2mm further into the wall, risking collision with rigid workpieces
+  - **Fix**: Removed unnecessary retract before moving to center (absolute positioning handles it)
+  - West wall sequence now: probe → calculate → move directly to X center
+  - **Impact**: Eliminated collision risk that could break expensive probe
+
 ## [1.9.2] - 2024-12-27
 
 ### Fixed

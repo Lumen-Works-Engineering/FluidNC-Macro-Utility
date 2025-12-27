@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.9.2</title>
+<title>FluidNC Probe Utility v1.9.3</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -1687,7 +1687,6 @@ async function runHoleProbe() {
     console.log('X Center: ' + centerX.toFixed(3) + ' (East: ' + eastX.toFixed(3) + ', West: ' + westX.toFixed(3) + ')');
 
     // Move to X center
-    await moveRel('X', -retract);
     statusEl.innerHTML = '<div class="probe-status working">Moving to X center...</div>';
     await sendAndWait('G90');
     await sendAndWait('G53 G0 X' + centerX.toFixed(3));
