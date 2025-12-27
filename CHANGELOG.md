@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.9.1] - 2024-12-27
 
 ### Fixed
-- **CRITICAL: Hole Probe movement bug** - Fixed dangerous over-travel when moving from East to West probe
-  - Was moving `-(probeDistance - retract)` then `-(probeDistance)` which caused double movement
-  - Now correctly moves `-(probeDistance * 2)` in single move to opposite side
-  - Fixed for both X (East/West) and Y (North/South) axes
-  - **Impact**: Prevented potential crashes into workpiece/fixture
-- Hole probe now correctly retracts and probes inward from opposite side
+- **CRITICAL: Hole Probe movement bug** - Fixed dangerous over-travel when moving between opposite walls
+  - **Root Cause**: Was using `probeDistance` (search parameter) instead of actual measured hole geometry
+  - **Old behavior**: Moved full search distance regardless of hole size, causing crashes
+  - **New behavior**: Uses absolute positioning based on measured wall location
+  - Movement calculation: `eastX - probeDistance` ensures proper positioning on opposite side
+  - Fixed for both X-axis (East/West) and Y-axis (North/South) movements
+  - Removed unnecessary Z-axis movements (hole probe stays at one Z level)
+  - **Impact**: Prevented potential crashes into workpiece/fixture and probe damage
 
 ## [1.9] - 2024-12-27
 

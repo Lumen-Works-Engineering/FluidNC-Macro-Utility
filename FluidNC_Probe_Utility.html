@@ -1668,22 +1668,26 @@ async function runHoleProbe() {
     probeResults.east.push(await probeAndCapture('X', probeDistance, feedrate));
     await moveRel('X', -retract);
     probeResults.east.push(await probeAndCapture('X', retract + 3, feedrateSlow));
+    const eastX = (probeResults.east[0].x + probeResults.east[1].x) / 2;
+
+    // Retract and move to opposite side using absolute positioning
     await moveRel('X', -retract);
-    
-    // Move to West side to probe back toward East
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 X' + (eastX - probeDistance).toFixed(3));  // Move to West side
+    await sendAndWait('G91');
+
+    // WEST (-X direction) - probe back toward East
     statusEl.innerHTML = '<div class="probe-status working">Probing West wall...</div>';
-    await moveRel('X', -(probeDistance * 2));  // Move across to West side
     probeResults.west.push(await probeAndCapture('X', probeDistance, feedrate));
     await moveRel('X', -retract);
     probeResults.west.push(await probeAndCapture('X', retract + 3, feedrateSlow));
-    await moveRel('X', -retract);
-    
-    const eastX = (probeResults.east[0].x + probeResults.east[1].x) / 2;
     const westX = (probeResults.west[0].x + probeResults.west[1].x) / 2;
+
     const centerX = (eastX + westX) / 2;
     console.log('X Center: ' + centerX.toFixed(3) + ' (East: ' + eastX.toFixed(3) + ', West: ' + westX.toFixed(3) + ')');
-    
+
     // Move to X center
+    await moveRel('X', -retract);
     statusEl.innerHTML = '<div class="probe-status working">Moving to X center...</div>';
     await sendAndWait('G90');
     await sendAndWait('G53 G0 X' + centerX.toFixed(3));
@@ -1694,18 +1698,21 @@ async function runHoleProbe() {
     probeResults.north.push(await probeAndCapture('Y', probeDistance, feedrate));
     await moveRel('Y', -retract);
     probeResults.north.push(await probeAndCapture('Y', retract + 3, feedrateSlow));
+    const northY = (probeResults.north[0].y + probeResults.north[1].y) / 2;
+
+    // Retract and move to opposite side using absolute positioning
     await moveRel('Y', -retract);
-    
-    // Move to South side to probe back toward North
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 Y' + (northY - probeDistance).toFixed(3));  // Move to South side
+    await sendAndWait('G91');
+
+    // SOUTH (-Y direction) - probe back toward North
     statusEl.innerHTML = '<div class="probe-status working">Probing South wall...</div>';
-    await moveRel('Y', -(probeDistance * 2));  // Move across to South side
     probeResults.south.push(await probeAndCapture('Y', probeDistance, feedrate));
     await moveRel('Y', -retract);
     probeResults.south.push(await probeAndCapture('Y', retract + 3, feedrateSlow));
-    await moveRel('Y', -retract);
-    
-    const northY = (probeResults.north[0].y + probeResults.north[1].y) / 2;
     const southY = (probeResults.south[0].y + probeResults.south[1].y) / 2;
+
     const centerY = (northY + southY) / 2;
     console.log('Y Center: ' + centerY.toFixed(3) + ' (North: ' + northY.toFixed(3) + ', South: ' + southY.toFixed(3) + ')');
     
