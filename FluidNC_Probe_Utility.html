@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.8</title>
+<title>FluidNC Probe Utility v1.9.1</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -481,12 +481,95 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
     </div>
   </div>
 </div>
-<!-- CORNER PROBE TAB (placeholder) -->
+<!-- CORNER PROBE TAB -->
 <div class="tab-panel" id="panel-corner">
-  <div class="placeholder-content">
-    <h2>📐 Corner Probe</h2>
-    <p>Find XY corner of rectangular workpieces.</p>
-    <p class="text-muted mt-1">Coming in Phase 5</p>
+  <div class="probe-layout">
+    <div>
+      <div class="section">
+        <div class="section-title">Presets</div>
+        <div class="preset-row">
+          <select id="corner-preset-select"><option value="">-- Select Preset --</option></select>
+          <button onclick="loadCornerPreset()">Load</button>
+          <button onclick="saveCornerPreset()">Save</button>
+          <button onclick="deleteCornerPreset()">Delete</button>
+        </div>
+      </div>
+      <div class="section probe-params">
+        <div class="section-title">Parameters</div>
+        <div class="form-row">
+          <span class="form-label">Preset Name:</span>
+          <input type="text" id="corner-preset-name" placeholder="e.g., Front Left">
+        </div>
+        <div class="form-row">
+          <span class="form-label">Corner Type:</span>
+          <select id="corner-type" style="width: 180px;">
+            <option value="inside-xplus-yplus">Inside +X+Y (NE)</option>
+            <option value="inside-xplus-yminus">Inside +X-Y (SE)</option>
+            <option value="inside-xminus-yplus">Inside -X+Y (NW)</option>
+            <option value="inside-xminus-yminus">Inside -X-Y (SW)</option>
+            <option value="outside-xplus-yplus">Outside +X+Y (NE)</option>
+            <option value="outside-xplus-yminus">Outside +X-Y (SE)</option>
+            <option value="outside-xminus-yplus">Outside -X+Y (NW)</option>
+            <option value="outside-xminus-yminus">Outside -X-Y (SW)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Search Distance:</span>
+          <div class="input-with-unit">
+            <input type="number" id="corner-search-dist" value="30" min="5" step="1">
+            <span class="unit-suffix">mm</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Probe Depth:</span>
+          <div class="input-with-unit">
+            <input type="number" id="corner-probe-depth" value="5" min="1" step="0.5">
+            <span class="unit-suffix">mm</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Feedrate:</span>
+          <div class="input-with-unit">
+            <input type="number" id="corner-feedrate" value="100" min="10" step="10">
+            <span class="unit-suffix">mm/min</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Probe Tip Ø:</span>
+          <div class="input-with-unit">
+            <input type="number" id="corner-tip-dia" value="2.0" readonly disabled>
+            <span class="unit-suffix">mm</span>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Actions</div>
+        <div id="corner-probe-status"></div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button onclick="testProbeConnection('corner')" class="btn-primary">Test Probe</button>
+          <button onclick="runCornerProbe()" class="btn-success" id="corner-run-btn">▶ Run Probe</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="section">
+        <div class="section-title">Results</div>
+        <div id="corner-results"><p class="text-muted">No probe results yet.</p></div>
+        <div class="results-actions" id="corner-results-actions" style="display: none;">
+          <button onclick="setCornerZero('X')">Set X0</button>
+          <button onclick="setCornerZero('Y')">Set Y0</button>
+          <button onclick="setCornerZero('XY')" class="btn-primary">Set XY0</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Instructions</div>
+        <div style="font-size: 12px; line-height: 1.6;">
+          <p><strong>Inside Corner:</strong> Position probe tip near the corner, inside the workpiece. Probe will search outward to find both edges.</p>
+          <p style="margin-top: 8px;"><strong>Outside Corner:</strong> Position probe tip outside the corner. Probe will search inward to find both edges.</p>
+          <p style="margin-top: 8px;"><strong>Corner Type:</strong> Select quadrant based on which direction the corner extends (+X is right, +Y is away from you).</p>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -609,6 +692,7 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
     <div class="section-title">Presets Summary</div>
     <p id="cylinder-preset-count" class="text-muted">0 cylinder presets saved</p>
     <p id="hole-preset-count" class="text-muted">0 hole presets saved</p>
+    <p id="corner-preset-count" class="text-muted">0 corner presets saved</p>
   </div>
   <div class="section">
     <div class="section-title">JSON Settings Editor</div>
@@ -649,14 +733,14 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
     "vacuumOn": "M8", "vacuumOff": "M9",
     "iotOn": "M64 P0", "iotOff": "M65 P0"
   },
-  "presets": { "cylinder": [], "hole": [] }
+  "presets": { "cylinder": [], "hole": [], "corner": [] }
 }
 </script>
 
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.8';
+const VERSION = '1.9.1';
 const App = {
   ws: null,
   isConnected: false,
@@ -691,7 +775,7 @@ function getDefaultSettings() {
     probe: { tipDiameter: 2.0, feedrate: 100, feedrateSlow: 50, timeout: 30, retractDistance: 2.0 },
     jog: { xySpeed: 1800, zSpeed: 400 },
     outputs: { mistOn: "M7", mistOff: "M9", vacuumOn: "M8", vacuumOff: "M9", iotOn: "M64 P0", iotOff: "M65 P0" },
-    presets: { cylinder: [], hole: [] }
+    presets: { cylinder: [], hole: [], corner: [] }
   };
 }
 
@@ -715,6 +799,7 @@ function applySettingsToUI() {
   document.getElementById('setting-iot-off').value = App.settings.outputs.iotOff;
   document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
   document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
+  document.getElementById('corner-tip-dia').value = App.settings.probe.tipDiameter;
   updatePresetCounts();
 }
 
@@ -765,6 +850,7 @@ function setupSettingsAutoSave() {
       updateSettingsJSON();
       document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
       document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
+      document.getElementById('corner-tip-dia').value = App.settings.probe.tipDiameter;
     });
   });
 }
@@ -798,6 +884,7 @@ function onFormatJSON() {
 function updatePresetCounts() {
   document.getElementById('cylinder-preset-count').textContent = App.settings.presets.cylinder.length + ' cylinder presets saved';
   document.getElementById('hole-preset-count').textContent = App.settings.presets.hole.length + ' hole presets saved';
+  document.getElementById('corner-preset-count').textContent = App.settings.presets.corner.length + ' corner presets saved';
 }
 //#endregion
 
@@ -1583,14 +1670,13 @@ async function runHoleProbe() {
     probeResults.east.push(await probeAndCapture('X', retract + 3, feedrateSlow));
     await moveRel('X', -retract);
     
-    // Return toward center then WEST
+    // Move to West side to probe back toward East
     statusEl.innerHTML = '<div class="probe-status working">Probing West wall...</div>';
-    await moveRel('X', -(probeDistance - retract));  // Go past center
-    await moveRel('X', -probeDistance);              // Continue to West side
-    probeResults.west.push(await probeAndCapture('X', -probeDistance, feedrate));
-    await moveRel('X', retract);
-    probeResults.west.push(await probeAndCapture('X', -(retract + 3), feedrateSlow));
-    await moveRel('X', retract);
+    await moveRel('X', -(probeDistance * 2));  // Move across to West side
+    probeResults.west.push(await probeAndCapture('X', probeDistance, feedrate));
+    await moveRel('X', -retract);
+    probeResults.west.push(await probeAndCapture('X', retract + 3, feedrateSlow));
+    await moveRel('X', -retract);
     
     const eastX = (probeResults.east[0].x + probeResults.east[1].x) / 2;
     const westX = (probeResults.west[0].x + probeResults.west[1].x) / 2;
@@ -1610,14 +1696,13 @@ async function runHoleProbe() {
     probeResults.north.push(await probeAndCapture('Y', retract + 3, feedrateSlow));
     await moveRel('Y', -retract);
     
-    // Return toward center then SOUTH
+    // Move to South side to probe back toward North
     statusEl.innerHTML = '<div class="probe-status working">Probing South wall...</div>';
-    await moveRel('Y', -(probeDistance - retract));
-    await moveRel('Y', -probeDistance);
-    probeResults.south.push(await probeAndCapture('Y', -probeDistance, feedrate));
-    await moveRel('Y', retract);
-    probeResults.south.push(await probeAndCapture('Y', -(retract + 3), feedrateSlow));
-    await moveRel('Y', retract);
+    await moveRel('Y', -(probeDistance * 2));  // Move across to South side
+    probeResults.south.push(await probeAndCapture('Y', probeDistance, feedrate));
+    await moveRel('Y', -retract);
+    probeResults.south.push(await probeAndCapture('Y', retract + 3, feedrateSlow));
+    await moveRel('Y', -retract);
     
     const northY = (probeResults.north[0].y + probeResults.north[1].y) / 2;
     const southY = (probeResults.south[0].y + probeResults.south[1].y) / 2;
@@ -1645,6 +1730,198 @@ async function runHoleProbe() {
 }
 //#endregion
 
+//#region ===== CORNER PROBE =====
+const CornerProbe = { result: null };
+
+function loadCornerPresets() {
+  const sel = document.getElementById('corner-preset-select');
+  sel.innerHTML = '<option value="">-- Select Preset --</option>';
+  App.settings.presets.corner.forEach((p, i) => {
+    sel.innerHTML += '<option value="' + i + '">' + (p.name || 'Preset ' + (i+1)) + '</option>';
+  });
+}
+
+function loadCornerPreset() {
+  const idx = parseInt(document.getElementById('corner-preset-select').value);
+  if (isNaN(idx)) return;
+  const p = App.settings.presets.corner[idx];
+  if (!p) return;
+  document.getElementById('corner-preset-name').value = p.name || '';
+  document.getElementById('corner-type').value = p.cornerType || 'outside-xplus-yplus';
+  document.getElementById('corner-search-dist').value = p.searchDistance || 30;
+  document.getElementById('corner-probe-depth').value = p.probeDepth || 5;
+  document.getElementById('corner-feedrate').value = p.feedrate || 100;
+}
+
+function saveCornerPreset() {
+  const name = document.getElementById('corner-preset-name').value.trim();
+  if (!name) { alert('Enter a preset name'); return; }
+  const preset = {
+    name: name,
+    cornerType: document.getElementById('corner-type').value,
+    searchDistance: parseFloat(document.getElementById('corner-search-dist').value) || 30,
+    probeDepth: parseFloat(document.getElementById('corner-probe-depth').value) || 5,
+    feedrate: parseInt(document.getElementById('corner-feedrate').value) || 100
+  };
+  const idx = App.settings.presets.corner.findIndex(p => p.name === name);
+  if (idx >= 0) App.settings.presets.corner[idx] = preset;
+  else App.settings.presets.corner.push(preset);
+  saveSettingsToEmbedded();
+  updateSettingsJSON();
+  loadCornerPresets();
+  updatePresetCounts();
+  alert('Preset "' + name + '" saved!');
+}
+
+function deleteCornerPreset() {
+  const idx = parseInt(document.getElementById('corner-preset-select').value);
+  if (isNaN(idx)) { alert('Select a preset to delete'); return; }
+  const name = App.settings.presets.corner[idx].name;
+  if (confirm('Delete preset "' + name + '"?')) {
+    App.settings.presets.corner.splice(idx, 1);
+    saveSettingsToEmbedded();
+    updateSettingsJSON();
+    loadCornerPresets();
+    updatePresetCounts();
+  }
+}
+
+function setCornerZero(axis) {
+  if (!CornerProbe.result || !App.isConnected) return;
+  if (axis === 'XY') sendCommand('G10 L20 P1 X0 Y0');
+  else sendCommand('G10 L20 P1 ' + axis + '0');
+  setTimeout(() => { sendCommand('$#'); setTimeout(() => sendCommand('?'), 100); }, 100);
+}
+
+function displayCornerResults(result) {
+  CornerProbe.result = result;
+  const el = document.getElementById('corner-results');
+  el.innerHTML = '<div class="results-grid">' +
+    '<span class="label">Corner X:</span><span class="value">' + result.cornerX.toFixed(3) + ' mm (MCS)</span>' +
+    '<span class="label">Corner Y:</span><span class="value">' + result.cornerY.toFixed(3) + ' mm (MCS)</span>' +
+    '<span class="label">Edge 1 (X):</span><span class="value">' + result.edge1.toFixed(3) + ' mm</span>' +
+    '<span class="label">Edge 2 (Y):</span><span class="value">' + result.edge2.toFixed(3) + ' mm</span></div>';
+  document.getElementById('corner-results-actions').style.display = 'flex';
+}
+
+async function runCornerProbe() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+
+  const cornerType = document.getElementById('corner-type').value;
+  const searchDist = parseFloat(document.getElementById('corner-search-dist').value);
+  const probeDepth = parseFloat(document.getElementById('corner-probe-depth').value);
+  const feedrate = parseInt(document.getElementById('corner-feedrate').value) || 100;
+  const feedrateSlow = App.settings.probe.feedrateSlow || 50;
+  const retract = App.settings.probe.retractDistance || 2;
+  const tipDia = App.settings.probe.tipDiameter || 2;
+
+  // Parse corner type: format is "inside/outside-xdir-ydir"
+  const parts = cornerType.split('-');
+  const isInside = parts[0] === 'inside';
+  const xDir = parts[1].includes('plus') ? 1 : -1;  // +1 for +X, -1 for -X
+  const yDir = parts[2].includes('plus') ? 1 : -1;  // +1 for +Y, -1 for -Y
+
+  if (!confirm('Corner Probe\n\nType: ' + cornerType + '\nSearch distance: ' + searchDist + ' mm\nProbe depth: ' + probeDepth + ' mm\n\nProbe tip positioned correctly?\n\nContinue?')) return;
+
+  App.probeInProgress = true;
+  probeCommandId = 0;
+  const statusEl = document.getElementById('corner-probe-status');
+  document.getElementById('corner-run-btn').disabled = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+
+  try {
+    statusEl.innerHTML = '<div class="probe-status working">Starting corner probe...</div>';
+    await sendAndWait('G91');
+
+    // For OUTSIDE corner: probe inward from outside
+    // For INSIDE corner: probe outward from inside
+    const probeDir = isInside ? 1 : -1;  // Multiplier for probe direction
+
+    // Probe X edge (vertical surface)
+    statusEl.innerHTML = '<div class="probe-status working">Probing X edge...</div>';
+    await moveRel('Z', -probeDepth);
+
+    // Move to search start position for X edge
+    if (isInside) {
+      // Inside: start at center, move out to probe back in
+      await moveRel('X', xDir * searchDist * 0.5);
+    } else {
+      // Outside: start away from edge, probe toward it
+      await moveRel('X', -xDir * searchDist);
+    }
+
+    const xProbe1 = await probeAndCapture('X', xDir * probeDir * searchDist * 2, feedrate);
+    await moveRel('X', -xDir * probeDir * retract);
+    const xProbe2 = await probeAndCapture('X', xDir * probeDir * (retract + 3), feedrateSlow);
+    const xEdge = (xProbe1.x + xProbe2.x) / 2;
+
+    await moveRel('X', -xDir * probeDir * retract);
+    await moveRel('Z', probeDepth);
+
+    // Return to approximately above corner
+    statusEl.innerHTML = '<div class="probe-status working">Moving to Y probe position...</div>';
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 X' + xEdge.toFixed(3));
+    await sendAndWait('G91');
+
+    // Probe Y edge (horizontal surface)
+    statusEl.innerHTML = '<div class="probe-status working">Probing Y edge...</div>';
+    await moveRel('Z', -probeDepth);
+
+    // Move to search start position for Y edge
+    if (isInside) {
+      await moveRel('Y', yDir * searchDist * 0.5);
+    } else {
+      await moveRel('Y', -yDir * searchDist);
+    }
+
+    const yProbe1 = await probeAndCapture('Y', yDir * probeDir * searchDist * 2, feedrate);
+    await moveRel('Y', -yDir * probeDir * retract);
+    const yProbe2 = await probeAndCapture('Y', yDir * probeDir * (retract + 3), feedrateSlow);
+    const yEdge = (yProbe1.y + yProbe2.y) / 2;
+
+    await moveRel('Y', -yDir * probeDir * retract);
+    await moveRel('Z', probeDepth);
+
+    // Calculate corner position (accounting for probe tip diameter)
+    let cornerX, cornerY;
+    if (isInside) {
+      // Inside corner: edges are closer to probe, add tip radius in direction away from material
+      cornerX = xEdge + xDir * (tipDia / 2);
+      cornerY = yEdge + yDir * (tipDia / 2);
+    } else {
+      // Outside corner: edges are away from probe, subtract tip radius toward material
+      cornerX = xEdge - xDir * (tipDia / 2);
+      cornerY = yEdge - yDir * (tipDia / 2);
+    }
+
+    // Move to corner
+    statusEl.innerHTML = '<div class="probe-status working">Moving to corner...</div>';
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 X' + cornerX.toFixed(3) + ' Y' + cornerY.toFixed(3));
+
+    const result = {
+      cornerX: cornerX,
+      cornerY: cornerY,
+      edge1: xEdge,
+      edge2: yEdge
+    };
+    displayCornerResults(result);
+    statusEl.innerHTML = '<div class="probe-status ready">✓ Complete! At corner position.</div>';
+
+  } catch (err) {
+    console.error('Probe error:', err);
+    statusEl.innerHTML = '<div class="probe-status error">✗ Failed: ' + err.message + '</div>';
+    try { sendCommand('G91 G0 Z10'); sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+    document.getElementById('corner-run-btn').disabled = false;
+  }
+}
+//#endregion
+
 //#region ===== INITIALIZATION =====
 function init() {
   console.log('FluidNC Probe Utility v' + VERSION);
@@ -1656,11 +1933,13 @@ function init() {
   // Load presets for all probe types
   loadCylinderPresets();
   loadHolePresets();
-  
+  loadCornerPresets();
+
   // Update tip diameter displays
   document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
   document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
-  
+  document.getElementById('corner-tip-dia').value = App.settings.probe.tipDiameter;
+
   // Initialize probe distance calculations
   updateCylProbeDistance();
   updateHoleProbeDistance();
