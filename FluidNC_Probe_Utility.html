@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.11.5</title>
+<title>FluidNC Probe Utility v1.11.6</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -874,7 +874,7 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.11.5';
+const VERSION = '1.11.6';
 const App = {
   ws: null,
   isConnected: false,
@@ -2111,6 +2111,7 @@ async function setSidePoint1AndProbe() {
   const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
   const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
   const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+  const retract = App.settings.probe.retractDistance || 2;
 
   if (!confirm(`Set Point 1 & Probe\n\nDirection: ${direction}\nProbe Distance: ${probeDistance}mm\n\nProbe positioned approximately ${probeDistance}mm from edge?\nContinue?`)) return;
 
@@ -2129,10 +2130,10 @@ async function setSidePoint1AndProbe() {
     const dir = direction.charAt(0) === '+' ? 1 : -1;
 
     const probe1 = await probeAndCapture(axis, dir * probeDistance, feedrate);
-    await moveRel(axis, -dir * 2); // Retract 2mm
-    const probe2 = await probeAndCapture(axis, dir * 3, feedrateSlow); // Slow probe
+    await moveRel(axis, -dir * retract); // Retract
+    const probe2 = await probeAndCapture(axis, dir * (retract + 3), feedrateSlow); // Slow probe
     const measured = (probe1[axis.toLowerCase()] + probe2[axis.toLowerCase()]) / 2;
-    await moveRel(axis, -dir * 2); // Retract again
+    await moveRel(axis, -dir * retract); // Return to original position
     await sendAndWait('G90');
 
     // Store Point 1
@@ -2173,6 +2174,7 @@ async function setSidePoint2AndProbe() {
   const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
   const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
   const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+  const retract = App.settings.probe.retractDistance || 2;
 
   // Get current position for sanity check - must use sendAndWait to ensure position is updated
   const { sendAndWait: sendAndWaitTemp } = createProbeHelpers();
@@ -2211,10 +2213,10 @@ async function setSidePoint2AndProbe() {
     const dir = direction.charAt(0) === '+' ? 1 : -1;
 
     const probe1 = await probeAndCapture(axis, dir * probeDistance, feedrate);
-    await moveRel(axis, -dir * 2); // Retract 2mm
-    const probe2 = await probeAndCapture(axis, dir * 3, feedrateSlow); // Slow probe
+    await moveRel(axis, -dir * retract); // Retract
+    const probe2 = await probeAndCapture(axis, dir * (retract + 3), feedrateSlow); // Slow probe
     const measured = (probe1[axis.toLowerCase()] + probe2[axis.toLowerCase()]) / 2;
-    await moveRel(axis, -dir * 2); // Retract again
+    await moveRel(axis, -dir * retract); // Return to original position
     await sendAndWait('G90');
 
     // Store Point 2
@@ -2259,6 +2261,7 @@ async function probeBothSidePoints() {
   const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
   const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
   const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+  const retract = App.settings.probe.retractDistance || 2;
   const raiseZ = document.getElementById('side-raise-z').checked;
   const zSafe = parseFloat(document.getElementById('side-z-safe').value);
 
@@ -2279,10 +2282,10 @@ async function probeBothSidePoints() {
     // Probe Point 1
     await sendAndWait('G91');
     const probe1a = await probeAndCapture(axis, dir * probeDistance, feedrate);
-    await moveRel(axis, -dir * 2);
-    const probe1b = await probeAndCapture(axis, dir * 3, feedrateSlow);
+    await moveRel(axis, -dir * retract);
+    const probe1b = await probeAndCapture(axis, dir * (retract + 3), feedrateSlow);
     const measured1 = (probe1a[axis.toLowerCase()] + probe1b[axis.toLowerCase()]) / 2;
-    await moveRel(axis, -dir * 2);
+    await moveRel(axis, -dir * retract); // Return to original position
     SideProbe.point1.measured = measured1;
 
     // Move to Point 2 (with optional Z raise for safety)
@@ -2307,10 +2310,10 @@ async function probeBothSidePoints() {
     // Probe Point 2
     await sendAndWait('G91');
     const probe2a = await probeAndCapture(axis, dir * probeDistance, feedrate);
-    await moveRel(axis, -dir * 2);
-    const probe2b = await probeAndCapture(axis, dir * 3, feedrateSlow);
+    await moveRel(axis, -dir * retract);
+    const probe2b = await probeAndCapture(axis, dir * (retract + 3), feedrateSlow);
     const measured2 = (probe2a[axis.toLowerCase()] + probe2b[axis.toLowerCase()]) / 2;
-    await moveRel(axis, -dir * 2);
+    await moveRel(axis, -dir * retract); // Return to original position
     SideProbe.point2.measured = measured2;
 
     await sendAndWait('G90');
@@ -2331,33 +2334,40 @@ async function probeBothSidePoints() {
 function displaySideProbeResults() {
   if (!SideProbe.point1 || !SideProbe.point2) return;
 
-  const axis = SideProbe.direction.charAt(1);
+  const probeAxis = SideProbe.direction.charAt(1); // X or Y - axis being probed
+  const direction = SideProbe.direction; // Full direction like '+X', '-Y'
   const measured1 = SideProbe.point1.measured;
   const measured2 = SideProbe.point2.measured;
   const difference = measured2 - measured1;
 
   // Calculate the travel axis distance
-  const travelAxis = axis === 'X' ? 'Y' : 'X';
+  const travelAxis = probeAxis === 'X' ? 'Y' : 'X';
   const travelDistance = Math.abs(SideProbe.point2[travelAxis.toLowerCase()] - SideProbe.point1[travelAxis.toLowerCase()]);
 
-  // Calculate angle and correction
-  const angleRad = Math.atan2(Math.abs(difference), travelDistance);
-  const angleDeg = angleRad * (180 / Math.PI);
-  const correctionDir = difference > 0 ? 'clockwise' : 'counter-clockwise';
+  // Determine which point is further from edge (Point 1 or Point 2)
+  const point1Further = measured1 > measured2;
 
   let resultsText = `Side Probe Results:\n\n`;
-  resultsText += `Point 1 (${axis}): ${measured1.toFixed(3)} mm\n`;
-  resultsText += `Point 2 (${axis}): ${measured2.toFixed(3)} mm\n`;
-  resultsText += `Difference: ${difference.toFixed(3)} mm\n`;
-  resultsText += `Travel Distance (${travelAxis}): ${travelDistance.toFixed(3)} mm\n`;
-  resultsText += `Angle: ${angleDeg.toFixed(3)}°\n\n`;
+  resultsText += `Point 1 (${probeAxis}): ${measured1.toFixed(3)} mm from edge\n`;
+  resultsText += `Point 2 (${probeAxis}): ${measured2.toFixed(3)} mm from edge\n`;
+  resultsText += `Difference: ${Math.abs(difference).toFixed(3)} mm\n`;
+  resultsText += `Travel Distance (${travelAxis}): ${travelDistance.toFixed(1)} mm\n\n`;
 
   if (Math.abs(difference) < 0.01) {
-    resultsText += `✓ Workpiece is parallel to ${axis} axis (within 0.01mm tolerance).`;
+    resultsText += `✓ ALIGNED - Workpiece is parallel (within 0.01mm tolerance)`;
   } else {
-    resultsText += `⚠ Workpiece is NOT parallel.\n`;
-    resultsText += `Rotate ${correctionDir} by ${angleDeg.toFixed(3)}° to align with ${axis} axis.\n`;
-    resultsText += `Or adjust by ${Math.abs(difference).toFixed(3)} mm over ${travelDistance.toFixed(1)} mm distance.`;
+    resultsText += `⚠ NOT PARALLEL - Correction needed:\n\n`;
+
+    // Provide practical instructions based on which end needs to move
+    if (point1Further) {
+      resultsText += `At Point 1 (near end), workpiece is ${Math.abs(difference).toFixed(2)}mm FURTHER from edge.\n`;
+      resultsText += `Move Point 1 end CLOSER to edge by ${Math.abs(difference).toFixed(2)}mm.\n`;
+    } else {
+      resultsText += `At Point 2 (far end), workpiece is ${Math.abs(difference).toFixed(2)}mm FURTHER from edge.\n`;
+      resultsText += `Move Point 2 end CLOSER to edge by ${Math.abs(difference).toFixed(2)}mm.\n`;
+    }
+
+    resultsText += `\nOr: Adjust ${Math.abs(difference).toFixed(2)}mm over ${travelDistance.toFixed(1)}mm distance.`;
   }
 
   document.getElementById('side-results').textContent = resultsText;

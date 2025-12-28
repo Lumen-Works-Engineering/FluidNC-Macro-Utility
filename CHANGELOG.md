@@ -5,6 +5,24 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.6] - 2024-12-28
+
+### Fixed
+- **CRITICAL: Side Probe not returning to original position** - Fixed WCS corruption
+  - **Problem**: After double-probe sequence, probe only retracted 2mm instead of returning to start
+  - **Impact**: WCS got corrupted, Point 2 measurements were inaccurate
+  - **Sequence**: Fast probe → retract 2mm → slow probe → retract 2mm ❌ (ends 1mm forward from start)
+  - **Fixed**: Fast probe → retract → slow probe → **retract to original position** ✓
+  - **Technical**: Changed from hardcoded `2mm` to using `retract` setting and proper return distance
+  - **Benefit**: Probe returns to exact starting position, preserving WCS and enabling accurate multi-point measurements
+
+### Changed
+- **Side Probe: Practical alignment instructions** - Removed degrees, added actionable guidance
+  - **Old**: "Rotate clockwise by 0.034° to align" (not useful - can't measure degrees in shop)
+  - **New**: "At Point 2 (far end), workpiece is 0.15mm FURTHER from edge. Move Point 2 end CLOSER to edge by 0.15mm."
+  - **Shows**: Which end (Point 1/Point 2), which direction (CLOSER/FURTHER), exact distance to move
+  - **Impact**: Clear, actionable instructions for workshop alignment
+
 ## [1.11.5] - 2024-12-28
 
 ### Fixed
