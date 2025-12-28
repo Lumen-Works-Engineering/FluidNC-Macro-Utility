@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.11.0</title>
+<title>FluidNC Probe Utility v1.11.1</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -642,6 +642,23 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
         <span class="unit-suffix">mm/min</span>
       </div>
     </div>
+
+    <div class="form-row">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="side-raise-z" style="width: auto;">
+        <span>Raise Z before moving between points</span>
+      </label>
+      <span style="font-size: 12px; color: #999; margin-left: 24px;">For "Probe Both Points" auto-sequence</span>
+    </div>
+
+    <div class="form-row">
+      <span class="form-label">Z Safe Distance:</span>
+      <div class="input-with-unit">
+        <input type="number" id="side-z-safe" value="10" min="1" step="1">
+        <span class="unit-suffix">mm</span>
+      </div>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">Relative: raise Z this amount</span>
+    </div>
   </div>
 
   <div class="section">
@@ -854,7 +871,7 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.11.0';
+const VERSION = '1.11.1';
 const App = {
   ws: null,
   isConnected: false,
@@ -2235,8 +2252,10 @@ async function probeBothSidePoints() {
   const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
   const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
   const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+  const raiseZ = document.getElementById('side-raise-z').checked;
+  const zSafe = parseFloat(document.getElementById('side-z-safe').value);
 
-  if (!confirm(`Probe Both Points\n\nThis will automatically move to Point 1, probe, then move to Point 2 and probe.\n\nDirection: ${direction}\nProbe Distance: ${probeDistance}mm\n\nContinue?`)) return;
+  if (!confirm(`Probe Both Points\n\nThis will automatically move to Point 1, probe, then move to Point 2 and probe.\n\nDirection: ${direction}\nProbe Distance: ${probeDistance}mm\nRaise Z: ${raiseZ ? 'Yes (' + zSafe + 'mm)' : 'No'}\n\nContinue?`)) return;
 
   App.probeInProgress = true;
   const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
@@ -2259,9 +2278,23 @@ async function probeBothSidePoints() {
     await moveRel(axis, -dir * 2);
     SideProbe.point1.measured = measured1;
 
-    // Move to Point 2
-    await sendAndWait('G90');
-    await sendAndWait(`G53 G0 X${SideProbe.point2.x.toFixed(3)} Y${SideProbe.point2.y.toFixed(3)} Z${SideProbe.point2.z.toFixed(3)}`);
+    // Move to Point 2 (with optional Z raise for safety)
+    if (raiseZ) {
+      // Raise Z to safe height (relative)
+      await sendAndWait('G91');
+      await moveRel('Z', zSafe);
+      await sendAndWait('G90');
+      // Move XY to Point 2
+      await sendAndWait(`G53 G0 X${SideProbe.point2.x.toFixed(3)} Y${SideProbe.point2.y.toFixed(3)}`);
+      // Lower Z back down (relative)
+      await sendAndWait('G91');
+      await moveRel('Z', -zSafe);
+      await sendAndWait('G90');
+    } else {
+      // Direct move to Point 2 (XYZ together)
+      await sendAndWait('G90');
+      await sendAndWait(`G53 G0 X${SideProbe.point2.x.toFixed(3)} Y${SideProbe.point2.y.toFixed(3)} Z${SideProbe.point2.z.toFixed(3)}`);
+    }
     await new Promise(resolve => setTimeout(resolve, 200));
 
     // Probe Point 2

@@ -5,6 +5,20 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2024-12-28
+
+### Added
+- **Side Probe: Z Safe Height option** - Safety feature for "Probe Both Points" auto-sequence
+  - **New Checkbox**: "Raise Z before moving between points"
+  - **New Setting**: "Z Safe Distance" (default 10mm, relative movement)
+  - **Purpose**: Prevents probe from crashing into clamps, fixtures, or workpiece between points
+  - **Behavior**:
+    - When checkbox enabled: Raise Z → Move XY to next point → Lower Z
+    - When checkbox disabled: Direct XYZ move (faster, but requires clear path)
+  - **Only affects auto-sequence**: Manual jogging workflow unchanged
+  - **Z movement is relative** (G91): Raises/lowers by specified amount from current position
+  - **Confirmation dialog**: Shows "Raise Z: Yes (10mm)" or "Raise Z: No" before running
+
 ## [1.11.0] - 2024-12-28
 
 ### Added
