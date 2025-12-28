@@ -5,6 +5,14 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.1] - 2024-12-27
+
+### Fixed
+- **Corner Probe Step 8 direction** - Fixed movement to position (B)
+  - Was moving in probe direction (toward wall)
+  - Now correctly moves AWAY from second wall before probing
+  - Example: SW corner now moves -Y (south) before probing +Y (north) to find bottom wall
+
 ## [1.10.0] - 2024-12-27
 
 ### Changed
