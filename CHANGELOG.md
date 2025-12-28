@@ -5,6 +5,81 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2024-12-28
+
+### Added - Height Map Feature (Phase 7)
+- **Height Map tab for T-slot probing** - Complete implementation for irregular grid probing
+  - **Purpose**: Create height maps of CNC work tables with T-slot rails at unequal distances
+  - **Use case**: User's modified Genmitsu Hybrid 4040 Pro Max with custom T-slot configuration
+- **Preset management for table configurations**
+  - Save/load/delete named presets for different table setups
+  - Stores: slot X positions, Y positions, Z safe height, probe depth, feedrate, timeout
+  - Prevents re-entering complex slot position arrays
+- **T-slot configuration**
+  - Slot X positions (comma-separated, irregular): e.g., `0,60,140.3,200.3,280.6,340.6`
+  - Y positions (comma-separated): e.g., `0,50,100,150,200,250,300,350,380`
+  - Supports any number of slots and Y positions
+- **Set Start Point button** - Sets current position as WCS origin (G10 L20 P1 X0 Y0)
+  - User manually jogs to SW t-slot rail first point before clicking
+  - Simplifies workflow for consistent reference point
+- **Probing sequence with progress tracking**
+  - Sequential probing: for each X slot, probe all Y positions
+  - Progress display: "Probing slot 2/6, Y position 5/9 (45.5% complete)"
+  - Abort button to safely stop mid-sequence
+  - Watchdog timeout per command for safety
+- **Results display**
+  - Summary statistics: reference Z, min/max/range/average
+  - Point count and configuration echo
+  - **No inline heatmap** (would be too large for UI)
+- **CSV export** - Raw data export
+  - Columns: X, Y, Z, Success, Deviation (from reference)
+  - Timestamped filename: `heightmap_1703779234567.csv`
+  - For analysis in external tools or comparison between runs
+- **HTML report export** - Complete visualization
+  - Summary statistics table
+  - Configuration details (slot positions)
+  - **Heatmap table** with color coding (blue=low, white=reference, red=high)
+  - Raw data table with deviations
+  - Timestamped filename: `heightmap_report_1703779234567.html`
+  - For visual comparison after table adjustments
+
+### Added - Settings Tab Enhancements
+- **Default Probe Distances section** - Auto-populate probe distance fields
+  - Cylinder Probe: 20mm default
+  - Hole Probe: 20mm default
+  - Corner Probe: 20mm default
+  - Side Probe: 5mm default
+  - Saves time when switching tabs
+- **Default Z Safe Heights section** - Auto-populate Z clearance heights
+  - Cylinder/Hole/Corner: 10mm default
+  - Side Probe: 10mm default
+  - Height Map: 20mm default (larger for table-wide moves)
+  - Prevents forgetting to set safe heights
+- **Heightmap preset count** - Shows number of saved table configurations
+  - Added to Presets Summary section
+  - Example: "3 heightmap presets saved"
+
+### Technical
+- Added `defaults` object to embedded settings JSON
+  - `probeDistances`: { cylinder, hole, corner, side }
+  - `zSafeHeights`: { standard, side, heightmap }
+- Added `heightmap` array to `presets` object
+- Updated `applySettingsToUI()` to populate default value fields
+- Updated `collectSettingsFromUI()` to save default values
+- Updated `updatePresetCounts()` to include heightmap count
+- Height Map uses shared `App.probeInProgress` flag to prevent concurrent probing
+- Height Map state object tracks: probeData, slotX, yPos, currentSlot, currentY, totalPoints, completedPoints
+- Probe data format: `{x, y, z, success}` array
+- Heatmap color algorithm: normalized deviation → blue/white/red gradient
+- Parse CSV utility: `parseCSV(str)` converts comma-separated strings to float arrays
+
+### User Experience
+- **Height Map workflow**: Position → Set Start Point → Configure slots → Start Probing → Export
+- **Preset workflow**: Configure once → Save as preset → Load next time
+- **Default values**: Set once in Settings → Auto-populate on all tabs
+- **Data freshness**: Timestamp on exports for version tracking
+- **Safety**: Abort button, watchdog timeout, Z raise between slots
+
 ## [1.12.0] - 2024-12-28
 
 ### Fixed

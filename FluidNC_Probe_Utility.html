@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.12.0</title>
+<title>FluidNC Probe Utility v1.13.0</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -716,12 +716,94 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
   </div>
 </div>
 
-<!-- HEIGHT MAP TAB (placeholder) -->
+<!-- HEIGHT MAP TAB -->
 <div class="tab-panel" id="panel-heightmap">
-  <div class="placeholder-content">
-    <h2>🗺️ Height Map</h2>
-    <p>T-slot probing for surface mapping.</p>
-    <p class="text-muted mt-1">Coming in Phase 7</p>
+  <div class="section">
+    <div class="section-title">Preset Management</div>
+    <div class="form-row">
+      <span class="form-label">Preset Name:</span>
+      <input type="text" id="hm-preset-name" placeholder="e.g., 4040 Pro Max" style="flex: 1;">
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button class="btn btn-primary" onclick="saveHeightmapPreset()">Save Current as Preset</button>
+      <select id="hm-preset-list" style="flex: 1;" onchange="loadHeightmapPreset()">
+        <option value="">-- Load Preset --</option>
+      </select>
+      <button class="btn" onclick="deleteHeightmapPreset()">Delete Preset</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">T-Slot Configuration</div>
+    <div class="form-row">
+      <span class="form-label">Slot X Positions:</span>
+      <input type="text" id="hm-slot-x" value="0,60,140.3,200.3,280.6,340.6" style="flex: 1;">
+      <span class="unit-suffix">mm</span>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Y Positions:</span>
+      <input type="text" id="hm-y-pos" value="0,50,100,150,200,250,300,350,380" style="flex: 1;">
+      <span class="unit-suffix">mm</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Probe Settings</div>
+    <div class="form-row">
+      <span class="form-label">Z Safe Height:</span>
+      <div class="input-with-unit">
+        <input type="number" id="hm-z-safe" value="20" step="1" min="1">
+        <span class="unit-suffix">mm</span>
+      </div>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">Clearance height (positive)</span>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Probe Depth:</span>
+      <div class="input-with-unit">
+        <input type="number" id="hm-probe-depth" value="-10" step="0.5" max="-0.5">
+        <span class="unit-suffix">mm</span>
+      </div>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">Max travel (negative)</span>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Feedrate:</span>
+      <div class="input-with-unit">
+        <input type="number" id="hm-feedrate" value="100" step="10">
+        <span class="unit-suffix">mm/min</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Timeout:</span>
+      <div class="input-with-unit">
+        <input type="number" id="hm-timeout" value="30" step="5">
+        <span class="unit-suffix">sec</span>
+      </div>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">Watchdog per command</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Start Probing</div>
+    <p class="text-muted" style="margin-bottom: 10px;">
+      Position probe at first point (SW t-slot rail, X=0 Y=0) and set work coordinate system.
+    </p>
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <button class="btn" onclick="setHeightmapStartPoint()">Set Start Point (G10 L20 P1 X0 Y0)</button>
+      <button class="btn btn-primary" id="btn-hm-start" onclick="startHeightmapProbe()">Start Probing</button>
+      <button class="btn" id="btn-hm-abort" onclick="abortHeightmapProbe()" disabled style="background: #c00; color: white;">Abort</button>
+    </div>
+    <div id="hm-progress" style="font-weight: bold; color: #4a9eff; margin-bottom: 10px;"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Results</div>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+      <button class="btn" id="btn-hm-export-csv" onclick="exportHeightmapCSV()" disabled>Export CSV</button>
+      <button class="btn" id="btn-hm-export-html" onclick="exportHeightmapHTML()" disabled>Export HTML Report</button>
+    </div>
+    <div id="hm-results" style="min-height: 150px; padding: 10px; background: #2a2a2a; border-radius: 4px; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 300px; overflow: auto;">
+No data yet. Position probe and click "Start Probing".
+    </div>
   </div>
 </div>
 
@@ -821,12 +903,68 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
         <input type="text" id="setting-iot-off" value="M65 P0">
       </div>
     </div>
+    <div class="section">
+      <div class="section-title">Default Probe Distances</div>
+      <div class="form-row">
+        <span class="form-label">Cylinder Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-cyl-distance" value="20" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Hole Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-hole-distance" value="20" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Corner Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-corner-distance" value="20" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Side Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-side-distance" value="5" step="0.5">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Default Z Safe Heights</div>
+      <div class="form-row">
+        <span class="form-label">Cylinder/Hole/Corner:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-z-safe" value="10" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Side Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-side-z-safe" value="10" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Height Map:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-heightmap-z-safe" value="20" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="section">
     <div class="section-title">Presets Summary</div>
     <p id="cylinder-preset-count" class="text-muted">0 cylinder presets saved</p>
     <p id="hole-preset-count" class="text-muted">0 hole presets saved</p>
     <p id="corner-preset-count" class="text-muted">0 corner presets saved</p>
+    <p id="heightmap-preset-count" class="text-muted">0 heightmap presets saved</p>
   </div>
   <div class="section">
     <div class="section-title">JSON Settings Editor</div>
@@ -867,14 +1005,27 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
     "vacuumOn": "M8", "vacuumOff": "M9",
     "iotOn": "M64 P0", "iotOff": "M65 P0"
   },
-  "presets": { "cylinder": [], "hole": [], "corner": [] }
+  "defaults": {
+    "probeDistances": {
+      "cylinder": 20,
+      "hole": 20,
+      "corner": 20,
+      "side": 5
+    },
+    "zSafeHeights": {
+      "standard": 10,
+      "side": 10,
+      "heightmap": 20
+    }
+  },
+  "presets": { "cylinder": [], "hole": [], "corner": [], "heightmap": [] }
 }
 </script>
 
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.12.0';
+const VERSION = '1.13.0';
 const App = {
   ws: null,
   isConnected: false,
@@ -909,7 +1060,11 @@ function getDefaultSettings() {
     probe: { tipDiameter: 2.0, feedrate: 100, feedrateSlow: 50, timeout: 30, retractDistance: 2.0 },
     jog: { xySpeed: 1800, zSpeed: 400 },
     outputs: { mistOn: "M7", mistOff: "M9", vacuumOn: "M8", vacuumOff: "M9", iotOn: "M64 P0", iotOff: "M65 P0" },
-    presets: { cylinder: [], hole: [], corner: [] }
+    defaults: {
+      probeDistances: { cylinder: 20, hole: 20, corner: 20, side: 5 },
+      zSafeHeights: { standard: 10, side: 10, heightmap: 20 }
+    },
+    presets: { cylinder: [], hole: [], corner: [], heightmap: [] }
   };
 }
 
@@ -931,6 +1086,22 @@ function applySettingsToUI() {
   document.getElementById('setting-vacuum-off').value = App.settings.outputs.vacuumOff;
   document.getElementById('setting-iot-on').value = App.settings.outputs.iotOn;
   document.getElementById('setting-iot-off').value = App.settings.outputs.iotOff;
+
+  // Default probe distances
+  if (App.settings.defaults && App.settings.defaults.probeDistances) {
+    document.getElementById('setting-default-cyl-distance').value = App.settings.defaults.probeDistances.cylinder;
+    document.getElementById('setting-default-hole-distance').value = App.settings.defaults.probeDistances.hole;
+    document.getElementById('setting-default-corner-distance').value = App.settings.defaults.probeDistances.corner;
+    document.getElementById('setting-default-side-distance').value = App.settings.defaults.probeDistances.side;
+  }
+
+  // Default Z safe heights
+  if (App.settings.defaults && App.settings.defaults.zSafeHeights) {
+    document.getElementById('setting-default-z-safe').value = App.settings.defaults.zSafeHeights.standard;
+    document.getElementById('setting-default-side-z-safe').value = App.settings.defaults.zSafeHeights.side;
+    document.getElementById('setting-default-heightmap-z-safe').value = App.settings.defaults.zSafeHeights.heightmap;
+  }
+
   document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
   document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
   updatePresetCounts();
@@ -960,6 +1131,19 @@ function collectSettingsFromUI() {
       vacuumOff: document.getElementById('setting-vacuum-off').value,
       iotOn: document.getElementById('setting-iot-on').value,
       iotOff: document.getElementById('setting-iot-off').value
+    },
+    defaults: {
+      probeDistances: {
+        cylinder: parseFloat(document.getElementById('setting-default-cyl-distance').value) || 20,
+        hole: parseFloat(document.getElementById('setting-default-hole-distance').value) || 20,
+        corner: parseFloat(document.getElementById('setting-default-corner-distance').value) || 20,
+        side: parseFloat(document.getElementById('setting-default-side-distance').value) || 5
+      },
+      zSafeHeights: {
+        standard: parseFloat(document.getElementById('setting-default-z-safe').value) || 10,
+        side: parseFloat(document.getElementById('setting-default-side-z-safe').value) || 10,
+        heightmap: parseFloat(document.getElementById('setting-default-heightmap-z-safe').value) || 20
+      }
     },
     presets: App.settings.presets
   };
@@ -1017,6 +1201,7 @@ function updatePresetCounts() {
   document.getElementById('cylinder-preset-count').textContent = App.settings.presets.cylinder.length + ' cylinder presets saved';
   document.getElementById('hole-preset-count').textContent = App.settings.presets.hole.length + ' hole presets saved';
   document.getElementById('corner-preset-count').textContent = App.settings.presets.corner.length + ' corner presets saved';
+  document.getElementById('heightmap-preset-count').textContent = (App.settings.presets.heightmap || []).length + ' heightmap presets saved';
 }
 //#endregion
 
@@ -2451,6 +2636,439 @@ function displaySideProbeResults() {
 }
 //#endregion
 
+//#region ===== HEIGHT MAP =====
+const HeightMap = {
+  probeData: [],  // Array of {x, y, z, success}
+  isProbing: false,
+  abortRequested: false,
+  slotX: [],
+  yPos: [],
+  currentSlot: 0,
+  currentY: 0,
+  totalPoints: 0,
+  completedPoints: 0
+};
+
+function parseCSV(str) {
+  return str.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+}
+
+function saveHeightmapPreset() {
+  const name = document.getElementById('hm-preset-name').value.trim();
+  if (!name) {
+    alert('Please enter a preset name');
+    return;
+  }
+
+  const preset = {
+    name: name,
+    slotX: document.getElementById('hm-slot-x').value,
+    yPos: document.getElementById('hm-y-pos').value,
+    zSafe: parseFloat(document.getElementById('hm-z-safe').value),
+    probeDepth: parseFloat(document.getElementById('hm-probe-depth').value),
+    feedrate: parseInt(document.getElementById('hm-feedrate').value),
+    timeout: parseInt(document.getElementById('hm-timeout').value)
+  };
+
+  if (!App.settings.presets.heightmap) {
+    App.settings.presets.heightmap = [];
+  }
+
+  // Check if preset name already exists
+  const existingIndex = App.settings.presets.heightmap.findIndex(p => p.name === name);
+  if (existingIndex >= 0) {
+    if (!confirm(`Preset "${name}" already exists. Overwrite?`)) return;
+    App.settings.presets.heightmap[existingIndex] = preset;
+  } else {
+    App.settings.presets.heightmap.push(preset);
+  }
+
+  saveSettingsToEmbedded();
+  updateSettingsJSON();
+  loadHeightmapPresets();
+  updatePresetCounts();
+  document.getElementById('hm-preset-name').value = '';
+  alert(`Preset "${name}" saved!`);
+}
+
+function loadHeightmapPresets() {
+  const select = document.getElementById('hm-preset-list');
+  select.innerHTML = '<option value="">-- Load Preset --</option>';
+  if (!App.settings.presets.heightmap) return;
+  App.settings.presets.heightmap.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.name;
+    select.appendChild(opt);
+  });
+}
+
+function loadHeightmapPreset() {
+  const select = document.getElementById('hm-preset-list');
+  const idx = parseInt(select.value);
+  if (isNaN(idx)) return;
+
+  const preset = App.settings.presets.heightmap[idx];
+  if (!preset) return;
+
+  document.getElementById('hm-slot-x').value = preset.slotX;
+  document.getElementById('hm-y-pos').value = preset.yPos;
+  document.getElementById('hm-z-safe').value = preset.zSafe;
+  document.getElementById('hm-probe-depth').value = preset.probeDepth;
+  document.getElementById('hm-feedrate').value = preset.feedrate;
+  document.getElementById('hm-timeout').value = preset.timeout;
+  document.getElementById('hm-preset-name').value = preset.name;
+}
+
+function deleteHeightmapPreset() {
+  const select = document.getElementById('hm-preset-list');
+  const idx = parseInt(select.value);
+  if (isNaN(idx)) {
+    alert('Please select a preset to delete');
+    return;
+  }
+
+  const preset = App.settings.presets.heightmap[idx];
+  if (!confirm(`Delete preset "${preset.name}"?`)) return;
+
+  App.settings.presets.heightmap.splice(idx, 1);
+  saveSettingsToEmbedded();
+  updateSettingsJSON();
+  loadHeightmapPresets();
+  updatePresetCounts();
+}
+
+async function setHeightmapStartPoint() {
+  if (!App.isConnected) {
+    alert('Not connected to FluidNC');
+    return;
+  }
+
+  if (!confirm('Set current position as X0 Y0 in work coordinate system (G10 L20 P1 X0 Y0)?')) return;
+
+  try {
+    await sendAndWait('G10 L20 P1 X0 Y0');
+    await sendAndWait('$#');  // Request WCO update
+    alert('Start point set! Current position is now X0 Y0.');
+  } catch (e) {
+    alert('Failed to set start point: ' + e.message);
+  }
+}
+
+async function startHeightmapProbe() {
+  if (!App.isConnected) {
+    alert('Not connected to FluidNC');
+    return;
+  }
+
+  if (App.probeInProgress || HeightMap.isProbing) {
+    alert('Probe already in progress');
+    return;
+  }
+
+  // Parse configuration
+  HeightMap.slotX = parseCSV(document.getElementById('hm-slot-x').value);
+  HeightMap.yPos = parseCSV(document.getElementById('hm-y-pos').value);
+
+  if (HeightMap.slotX.length === 0 || HeightMap.yPos.length === 0) {
+    alert('Invalid slot X or Y positions');
+    return;
+  }
+
+  const zSafe = parseFloat(document.getElementById('hm-z-safe').value);
+  const probeDepth = parseFloat(document.getElementById('hm-probe-depth').value);
+  const feedrate = parseInt(document.getElementById('hm-feedrate').value);
+  const timeout = parseInt(document.getElementById('hm-timeout').value) * 1000;
+
+  if (zSafe <= 0) {
+    alert('Z Safe Height must be positive');
+    return;
+  }
+
+  if (probeDepth >= 0) {
+    alert('Probe Depth must be negative');
+    return;
+  }
+
+  HeightMap.totalPoints = HeightMap.slotX.length * HeightMap.yPos.length;
+  if (!confirm(`Start probing ${HeightMap.totalPoints} points (${HeightMap.slotX.length} slots × ${HeightMap.yPos.length} Y positions)?`)) {
+    return;
+  }
+
+  // Initialize probing state
+  HeightMap.probeData = [];
+  HeightMap.isProbing = true;
+  HeightMap.abortRequested = false;
+  HeightMap.currentSlot = 0;
+  HeightMap.currentY = 0;
+  HeightMap.completedPoints = 0;
+  App.probeInProgress = true;
+
+  document.getElementById('btn-hm-start').disabled = true;
+  document.getElementById('btn-hm-abort').disabled = false;
+  document.getElementById('btn-hm-export-csv').disabled = true;
+  document.getElementById('btn-hm-export-html').disabled = true;
+  document.getElementById('hm-results').textContent = 'Probing started...\n';
+
+  try {
+    // Initialize
+    await sendAndWait('G21');  // Metric
+    await sendAndWait('G90');  // Absolute positioning
+    await sendAndWait('G54');  // Use WCS 1
+
+    // Probe each slot
+    for (let i = 0; i < HeightMap.slotX.length; i++) {
+      if (HeightMap.abortRequested) break;
+
+      HeightMap.currentSlot = i;
+      const x = HeightMap.slotX[i];
+
+      for (let j = 0; j < HeightMap.yPos.length; j++) {
+        if (HeightMap.abortRequested) break;
+
+        HeightMap.currentY = j;
+        const y = HeightMap.yPos[j];
+
+        updateHeightmapProgress();
+
+        // Move to position
+        if (j === 0) {
+          // First Y in this slot - raise Z, move XY
+          await sendAndWait(`G0 Z${zSafe.toFixed(3)}`);
+          await sendAndWait(`G0 X${x.toFixed(3)} Y${y.toFixed(3)}`);
+        } else {
+          // Same slot, just move Y
+          await sendAndWait(`G0 Y${y.toFixed(3)}`);
+        }
+
+        // Probe down
+        const probeCmd = `G38.2 Z${probeDepth.toFixed(3)} F${feedrate}`;
+        const response = await sendAndWait(probeCmd, timeout);
+
+        // Parse probe result
+        const match = response.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);
+        if (match) {
+          const px = parseFloat(match[1]);
+          const py = parseFloat(match[2]);
+          const pz = parseFloat(match[3]);
+          const success = parseInt(match[4]) === 1;
+
+          HeightMap.probeData.push({ x: px, y: py, z: pz, success });
+          HeightMap.completedPoints++;
+        } else {
+          // Probe failed
+          HeightMap.probeData.push({ x: x, y: y, z: null, success: false });
+          HeightMap.completedPoints++;
+        }
+
+        // Retract Z to safe height
+        await sendAndWait(`G0 Z${zSafe.toFixed(3)}`);
+      }
+    }
+
+    // Return to origin
+    await sendAndWait(`G0 Z${zSafe.toFixed(3)}`);
+    await sendAndWait('G0 X0 Y0');
+
+    if (HeightMap.abortRequested) {
+      document.getElementById('hm-results').textContent = 'Probing aborted by user.\n';
+    } else {
+      displayHeightmapResults();
+      document.getElementById('btn-hm-export-csv').disabled = false;
+      document.getElementById('btn-hm-export-html').disabled = false;
+    }
+
+  } catch (e) {
+    document.getElementById('hm-results').textContent = 'Probing failed: ' + e.message;
+    alert('Probing failed: ' + e.message);
+  } finally {
+    HeightMap.isProbing = false;
+    App.probeInProgress = false;
+    document.getElementById('btn-hm-start').disabled = false;
+    document.getElementById('btn-hm-abort').disabled = true;
+    document.getElementById('hm-progress').textContent = '';
+  }
+}
+
+function abortHeightmapProbe() {
+  if (HeightMap.isProbing) {
+    HeightMap.abortRequested = true;
+    document.getElementById('hm-progress').textContent = 'Aborting...';
+  }
+}
+
+function updateHeightmapProgress() {
+  const percent = ((HeightMap.completedPoints / HeightMap.totalPoints) * 100).toFixed(1);
+  const slotNum = HeightMap.currentSlot + 1;
+  const yNum = HeightMap.currentY + 1;
+  document.getElementById('hm-progress').textContent =
+    `Probing slot ${slotNum}/${HeightMap.slotX.length}, Y position ${yNum}/${HeightMap.yPos.length} (${percent}% complete)`;
+}
+
+function displayHeightmapResults() {
+  const data = HeightMap.probeData.filter(d => d.success);
+  if (data.length === 0) {
+    document.getElementById('hm-results').textContent = 'No successful probe points.';
+    return;
+  }
+
+  // Find reference Z (first point)
+  const refZ = data[0].z;
+
+  // Calculate statistics
+  const zValues = data.map(d => d.z);
+  const minZ = Math.min(...zValues);
+  const maxZ = Math.max(...zValues);
+  const avgZ = zValues.reduce((a, b) => a + b, 0) / zValues.length;
+  const range = maxZ - minZ;
+
+  // Build results text
+  let resultsText = `Height Map Results (${data.length} points)\n\n`;
+  resultsText += `Reference Z (first point): ${refZ.toFixed(3)} mm\n`;
+  resultsText += `Min Z: ${minZ.toFixed(3)} mm\n`;
+  resultsText += `Max Z: ${maxZ.toFixed(3)} mm\n`;
+  resultsText += `Range: ${range.toFixed(3)} mm\n`;
+  resultsText += `Average Z: ${avgZ.toFixed(3)} mm\n\n`;
+
+  resultsText += `X Slots: ${HeightMap.slotX.join(', ')} mm\n`;
+  resultsText += `Y Positions: ${HeightMap.yPos.join(', ')} mm\n\n`;
+
+  resultsText += `Use Export buttons to save data as CSV or HTML report.`;
+
+  document.getElementById('hm-results').textContent = resultsText;
+}
+
+function exportHeightmapCSV() {
+  if (HeightMap.probeData.length === 0) {
+    alert('No probe data to export');
+    return;
+  }
+
+  let csv = 'X,Y,Z,Success,Deviation\n';
+  const refZ = HeightMap.probeData.find(d => d.success)?.z || 0;
+
+  HeightMap.probeData.forEach(d => {
+    const dev = d.success ? (d.z - refZ).toFixed(3) : 'N/A';
+    csv += `${d.x.toFixed(3)},${d.y.toFixed(3)},${d.z !== null ? d.z.toFixed(3) : 'N/A'},${d.success},${dev}\n`;
+  });
+
+  // Download
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `heightmap_${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportHeightmapHTML() {
+  if (HeightMap.probeData.length === 0) {
+    alert('No probe data to export');
+    return;
+  }
+
+  const data = HeightMap.probeData.filter(d => d.success);
+  const refZ = data[0].z;
+  const zValues = data.map(d => d.z);
+  const minZ = Math.min(...zValues);
+  const maxZ = Math.max(...zValues);
+  const avgZ = zValues.reduce((a, b) => a + b, 0) / zValues.length;
+  const range = maxZ - minZ;
+
+  // Build heatmap table
+  let heatmapHTML = '<table border="1" cellpadding="4" style="border-collapse: collapse; font-size: 12px;">\n';
+  heatmapHTML += '<tr><th>Y \\ X</th>';
+  HeightMap.slotX.forEach(x => {
+    heatmapHTML += `<th>${x.toFixed(1)}</th>`;
+  });
+  heatmapHTML += '</tr>\n';
+
+  HeightMap.yPos.forEach(y => {
+    heatmapHTML += `<tr><th>${y.toFixed(1)}</th>`;
+    HeightMap.slotX.forEach(x => {
+      const point = data.find(d => Math.abs(d.x - x) < 0.01 && Math.abs(d.y - y) < 0.01);
+      if (point) {
+        const dev = point.z - refZ;
+        const absMax = Math.max(Math.abs(minZ - refZ), Math.abs(maxZ - refZ));
+        const normalized = dev / (absMax || 1);  // -1 to 1
+
+        // Color: blue (low) -> white (ref) -> red (high)
+        let color;
+        if (normalized < 0) {
+          const intensity = Math.floor(255 * (1 + normalized));
+          color = `rgb(${intensity},${intensity},255)`;
+        } else {
+          const intensity = Math.floor(255 * (1 - normalized));
+          color = `rgb(255,${intensity},${intensity})`;
+        }
+
+        heatmapHTML += `<td style="background: ${color}; text-align: center;">${dev.toFixed(2)}</td>`;
+      } else {
+        heatmapHTML += '<td style="background: #ccc; text-align: center;">N/A</td>';
+      }
+    });
+    heatmapHTML += '</tr>\n';
+  });
+  heatmapHTML += '</table>';
+
+  // Build HTML report
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Height Map Report</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  table { border-collapse: collapse; margin: 20px 0; }
+  th, td { border: 1px solid #999; padding: 6px; text-align: center; }
+  th { background: #ddd; }
+</style>
+</head>
+<body>
+<h1>Height Map Report</h1>
+<p>Generated: ${new Date().toLocaleString()}</p>
+
+<h2>Summary Statistics</h2>
+<table>
+  <tr><th>Metric</th><th>Value</th></tr>
+  <tr><td>Total Points</td><td>${data.length}</td></tr>
+  <tr><td>Reference Z (first point)</td><td>${refZ.toFixed(3)} mm</td></tr>
+  <tr><td>Min Z</td><td>${minZ.toFixed(3)} mm</td></tr>
+  <tr><td>Max Z</td><td>${maxZ.toFixed(3)} mm</td></tr>
+  <tr><td>Range</td><td>${range.toFixed(3)} mm</td></tr>
+  <tr><td>Average Z</td><td>${avgZ.toFixed(3)} mm</td></tr>
+</table>
+
+<h2>Configuration</h2>
+<p><strong>X Slots:</strong> ${HeightMap.slotX.join(', ')} mm</p>
+<p><strong>Y Positions:</strong> ${HeightMap.yPos.join(', ')} mm</p>
+
+<h2>Heatmap (Deviation from Reference)</h2>
+${heatmapHTML}
+
+<h2>Raw Data</h2>
+<table>
+  <tr><th>X</th><th>Y</th><th>Z</th><th>Deviation</th></tr>
+${data.map(d => {
+  const dev = d.z - refZ;
+  return `  <tr><td>${d.x.toFixed(3)}</td><td>${d.y.toFixed(3)}</td><td>${d.z.toFixed(3)}</td><td>${dev.toFixed(3)}</td></tr>`;
+}).join('\n')}
+</table>
+</body>
+</html>`;
+
+  // Download
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `heightmap_report_${Date.now()}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+//#endregion
+
 //#region ===== INITIALIZATION =====
 function init() {
   console.log('FluidNC Probe Utility v' + VERSION);
@@ -2463,9 +3081,15 @@ function init() {
   loadCylinderPresets();
   loadHolePresets();
   loadCornerPresets();
+  loadHeightmapPresets();
 
   // Initialize Side Probe button states
   updateSideProbeButtons();
+
+  // Initialize Height Map default Z safe from settings
+  if (App.settings.defaults && App.settings.defaults.zSafeHeights) {
+    document.getElementById('hm-z-safe').value = App.settings.defaults.zSafeHeights.heightmap;
+  }
 
   // Update tip diameter displays
   document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
