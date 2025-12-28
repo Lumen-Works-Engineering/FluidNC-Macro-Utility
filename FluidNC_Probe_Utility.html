@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.11.1</title>
+<title>FluidNC Probe Utility v1.11.2</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -871,7 +871,7 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.11.1';
+const VERSION = '1.11.2';
 const App = {
   ws: null,
   isConnected: false,
@@ -2118,7 +2118,7 @@ async function setSidePoint1AndProbe() {
     // Get current position
     await sendAndWait('?');
     await new Promise(resolve => setTimeout(resolve, 100));
-    const currentPos = { x: App.currentPos.x, y: App.currentPos.y, z: App.currentPos.z };
+    const currentPos = { x: App.position.mcs.x, y: App.position.mcs.y, z: App.position.mcs.z };
 
     // Perform double-probe sequence
     await sendAndWait('G91');
@@ -2174,7 +2174,7 @@ async function setSidePoint2AndProbe() {
   // Get current position for sanity check
   await sendCommand('?');
   await new Promise(resolve => setTimeout(resolve, 100));
-  const currentPos = { x: App.currentPos.x, y: App.currentPos.y, z: App.currentPos.z };
+  const currentPos = { x: App.position.mcs.x, y: App.position.mcs.y, z: App.position.mcs.z };
 
   // Sanity check: only one axis should have changed
   const axis = direction.charAt(1); // 'X' or 'Y'

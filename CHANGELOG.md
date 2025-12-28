@@ -5,6 +5,14 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.2] - 2024-12-28
+
+### Fixed
+- **Side Probe: Position reading error** - Fixed "Cannot read properties of undefined" error
+  - **Root Cause**: Used `App.currentPos` instead of correct `App.position.mcs`
+  - **Fixed in**: `setSidePoint1AndProbe()` and `setSidePoint2AndProbe()` functions
+  - **Impact**: Side Probe now correctly reads current machine position before probing
+
 ## [1.11.1] - 2024-12-28
 
 ### Added
