@@ -2,7 +2,7 @@
 
 A web-based utility for CNC probe operations with FluidNC controllers. Consolidates multiple probing functions into a single, portable HTML file that connects via WebSocket.
 
-![Version](https://img.shields.io/badge/version-1.10.1-blue)
+![Version](https://img.shields.io/badge/version-1.10.3-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
@@ -139,7 +139,7 @@ Use `Ctrl+Shift+[` to fold regions in VS Code.
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-Current version: **1.10.1** (2024-12-27)
+Current version: **1.10.3** (2024-12-27)
 
 ## Contributing
 

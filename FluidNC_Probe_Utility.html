@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.10.1</title>
+<title>FluidNC Probe Utility v1.10.3</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -550,7 +550,7 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
             <input type="number" id="corner-z-safe" value="10" min="1" step="1">
             <span class="unit-suffix">mm</span>
           </div>
-          <span style="font-size: 12px; color: #999; margin-left: 8px;">Height to raise before moving to corner</span>
+          <span style="font-size: 12px; color: #999; margin-left: 8px;">Relative: raise Z this amount from current position</span>
         </div>
       </div>
       <div class="section">
@@ -1931,13 +1931,15 @@ async function runCornerProbe() {
     cornerPos[axis1.toLowerCase()] = wall1Pos + dir1 * (tipDia / 2);
     cornerPos[axis2.toLowerCase()] = wall2Pos + dir2 * (tipDia / 2);
 
-    // STEP 11: Optionally move to corner
+    // STEP 11: Optionally move to corner (leave Z at safe height for tool change)
     if (moveToCorner) {
-      statusEl.innerHTML = '<div class="probe-status working">Moving to corner...</div>';
+      statusEl.innerHTML = '<div class="probe-status working">Moving to corner at safe Z height...</div>';
+      // Raise Z to safe height (relative)
       await moveRel('Z', zSafe);
+      // Move to corner XY (absolute machine coordinates)
       await sendAndWait('G90');
       await sendAndWait(`G53 G0 X${cornerPos.x.toFixed(3)} Y${cornerPos.y.toFixed(3)}`);
-      await moveRel('Z', -zSafe);
+      // Stay at safe Z height - ready for tool change and manual Z zero setting
     }
 
     await sendAndWait('G90');

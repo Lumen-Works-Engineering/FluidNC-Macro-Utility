@@ -5,6 +5,29 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.3] - 2024-12-27
+
+### Fixed
+- **Corner Probe Z behavior** - Removed dangerous Z-down move after moving to corner
+  - **Old behavior**: Raised Z, moved to corner, then lowered Z back to probe height
+  - **Problem**: Z probe height is at mid-sidewall - lowering would crash into workpiece top
+  - **New behavior**: Raises Z to safe height, moves to corner, STOPS at safe height
+  - **Workflow**: User removes probe → inserts tool → manually sets Z zero at work surface
+  - **If "Move to Corner" unchecked**: Probe stays at position (C), no Z movement
+  - **Impact**: Proper tool change workflow, no risk of crashing into workpiece
+
+## [1.10.2] - 2024-12-27
+
+### Fixed
+- **CRITICAL: Z Safe Distance G-code mode bug** - Fixed soft limit errors when moving to corner
+  - **Root Cause**: After moving to corner XY in G90 (absolute), the Z-down move was also absolute
+  - **Old behavior**: `G0 Z-20` (absolute) tried to move to Z=-20mm, causing soft limit errors
+  - **New behavior**: Explicitly switch to G91 before Z-down move, making it relative
+  - **Z Safe Distance is now RELATIVE**: Raises Z by specified amount from current position
+  - **Industry Standard**: Matches touch probe behavior (relative retract distance)
+  - **Updated UI label**: Now clearly states "Relative: raise Z this amount from current position"
+  - **Impact**: No more soft limit errors, works regardless of where you position Z initially
+
 ## [1.10.1] - 2024-12-27
 
 ### Fixed
