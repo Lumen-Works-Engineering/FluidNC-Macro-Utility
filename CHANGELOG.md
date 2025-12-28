@@ -5,6 +5,20 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.3] - 2024-12-28
+
+### Fixed
+- **Side Probe: Jog buttons not working** - Added missing `jogAxis()` function
+  - **Error**: "ReferenceError: jogAxis is not defined" when clicking jog buttons
+  - **Fix**: Created `jogAxis(axis, distance)` helper function for Side Probe tab
+  - **Impact**: XY jog buttons on Side Probe tab now work correctly
+- **Side Probe: Point 2 position not updating** - Fixed stale position reading
+  - **Problem**: When jogging to Point 2, utility read cached position from Point 1
+  - **Root Cause**: Used `sendCommand('?')` which doesn't wait for response
+  - **Fix**: Changed to `sendAndWait('?')` with 200ms delay for position update
+  - **Example**: User jogged from Y=86mm to Y=227mm, but utility still saw Y=86mm
+  - **Impact**: Point 2 now correctly reads current position after manual jogging
+
 ## [1.11.2] - 2024-12-28
 
 ### Fixed

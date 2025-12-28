@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.11.2</title>
+<title>FluidNC Probe Utility v1.11.3</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -871,7 +871,7 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.11.2';
+const VERSION = '1.11.3';
 const App = {
   ws: null,
   isConnected: false,
@@ -2072,6 +2072,13 @@ const SideProbe = {
   direction: null  // '+X', '-X', '+Y', '-Y'
 };
 
+// Simple jog function for Side Probe tab
+function jogAxis(axis, distance) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  const speed = (axis === 'Z') ? App.settings.jog.zSpeed : App.settings.jog.xySpeed;
+  sendCommand('$J=G91 G21 ' + axis + distance.toFixed(3) + ' F' + speed);
+}
+
 function updateSideProbeButtons() {
   const hasPoint1 = SideProbe.point1 !== null;
   const hasPoint2 = SideProbe.point2 !== null;
@@ -2171,9 +2178,10 @@ async function setSidePoint2AndProbe() {
   const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
   const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
 
-  // Get current position for sanity check
-  await sendCommand('?');
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // Get current position for sanity check - must use sendAndWait to ensure position is updated
+  const { sendAndWait: sendAndWaitTemp } = createProbeHelpers();
+  await sendAndWaitTemp('?');
+  await new Promise(resolve => setTimeout(resolve, 200)); // Extra time for position update
   const currentPos = { x: App.position.mcs.x, y: App.position.mcs.y, z: App.position.mcs.z };
 
   // Sanity check: only one axis should have changed
