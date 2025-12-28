@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.13.0</title>
+<title>FluidNC Probe Utility v1.13.1</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -1025,7 +1025,7 @@ No data yet. Position probe and click "Start Probing".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.13.0';
+const VERSION = '1.13.1';
 const App = {
   ws: null,
   isConnected: false,
@@ -2846,9 +2846,11 @@ async function startHeightmapProbe() {
           await sendAndWait(`G0 Y${y.toFixed(3)}`);
         }
 
-        // Probe down
+        // Probe down (use relative mode for probe)
+        await sendAndWait('G91');  // Switch to relative
         const probeCmd = `G38.2 Z${probeDepth.toFixed(3)} F${feedrate}`;
         const response = await sendAndWait(probeCmd, timeout);
+        await sendAndWait('G90');  // Back to absolute
 
         // Parse probe result
         const match = response.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);

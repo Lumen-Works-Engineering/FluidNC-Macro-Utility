@@ -5,6 +5,20 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.1] - 2024-12-28
+
+### Fixed
+- **CRITICAL: Height Map probe moving up instead of down** - Fixed G-code mode issue
+  - **Problem**: Probe command sent in absolute mode (G90) with negative Z value, causing upward movement
+  - **Impact**: Triggered soft limit alarm instead of probing table surface
+  - **Root cause**: After moving to Z safe height (e.g., Z=10mm absolute), `G38.2 Z-10` tried to move to Z=-10mm absolute
+  - **Fix**: Switch to relative mode (G91) for probe command, then back to absolute (G90)
+  - **Sequence**: G0 Z10 (safe) → G0 X0 Y0 → **G91** → G38.2 Z-10 (probe down 10mm) → **G90** → G0 Z10 (retract)
+  - **Technical**: Matches probe pattern used in Side Probe and other probe functions
+- **Height Map: Added missing `createProbeHelpers()` calls**
+  - Both `setHeightmapStartPoint()` and `startHeightmapProbe()` now properly create probe helpers
+  - Fixes "sendAndWait is not defined" error
+
 ## [1.13.0] - 2024-12-28
 
 ### Added - Height Map Feature (Phase 7)
