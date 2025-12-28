@@ -5,6 +5,18 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.3] - 2024-12-28
+
+### Fixed
+- **CRITICAL: Height Map probe response not captured** - Fixed `sendAndWait()` returning undefined
+  - **Problem**: `sendAndWait()` waited for "ok" but didn't return the probe response
+  - **Error**: "Cannot read properties of undefined (reading 'match')" when parsing PRB response
+  - **Root cause**: Line 1483 `resolve()` returned undefined instead of the accumulated responses
+  - **Impact**: Height Map failed immediately on first probe touch
+  - **Fix**: Changed `sendAndWait()` to accumulate all responses and return them on "ok"
+  - **Technical**: Added `let responses = ''` and `responses += d` to build complete response string
+  - **Sequence**: Receives `[PRB:22.198,51.298,-52.745,0.000:1]` then `ok` → returns full string for parsing
+
 ## [1.13.2] - 2024-12-28
 
 ### Changed - Height Map Simplified Workflow

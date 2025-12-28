@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.13.2</title>
+<title>FluidNC Probe Utility v1.13.3</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -1017,7 +1017,7 @@ No data yet. Position probe and click "Start Probing".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.13.2';
+const VERSION = '1.13.3';
 const App = {
   ws: null,
   isConnected: false,
@@ -1464,23 +1464,27 @@ function createProbeHelpers() {
   const sendAndWait = (cmd) => new Promise((resolve, reject) => {
     const myId = ++probeCommandId;
     console.log('[' + myId + '] Sending: ' + cmd);
-    
+
     const timer = setTimeout(() => {
       App.ws.removeEventListener('message', h);
       reject(new Error('Timeout waiting for ok on: ' + cmd));
     }, timeout);
-    
+
+    let responses = '';  // Accumulate all responses
+
     const h = async (ev) => {
       let d = ev.data;
       if (d instanceof Blob) d = await d.text();
       if (d.includes('PING')) return;
       console.log('[' + myId + '] Received: ' + d.trim());
-      
+
+      responses += d;  // Accumulate response
+
       if (d.includes('ok')) {
         clearTimeout(timer);
         App.ws.removeEventListener('message', h);
         console.log('[' + myId + '] OK received');
-        resolve();
+        resolve(responses);  // Return accumulated responses
       } else if (d.includes('ALARM') || d.toLowerCase().includes('error')) {
         clearTimeout(timer);
         App.ws.removeEventListener('message', h);
