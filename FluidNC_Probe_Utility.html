@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.10.3</title>
+<title>FluidNC Probe Utility v1.11.0</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -603,12 +603,96 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
   </div>
 </div>
 
-<!-- SIDE ALIGN TAB (placeholder) -->
+<!-- SIDE ALIGN TAB -->
 <div class="tab-panel" id="panel-side-align">
-  <div class="placeholder-content">
-    <h2>📏 Side Align</h2>
-    <p>Two-point alignment parallel to axis.</p>
-    <p class="text-muted mt-1">Coming in Phase 6</p>
+  <div class="section">
+    <div class="section-title">Side Probe Settings</div>
+
+    <div class="form-row">
+      <span class="form-label">Probe Direction:</span>
+      <select id="side-probe-direction" style="width: 250px;">
+        <option value="+X">Right (+X)</option>
+        <option value="-X">Left (-X)</option>
+        <option value="+Y">Up (+Y)</option>
+        <option value="-Y">Down (-Y)</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <span class="form-label">Probe Distance:</span>
+      <div class="input-with-unit">
+        <input type="number" id="side-probe-distance" value="5" min="1" step="0.5">
+        <span class="unit-suffix">mm</span>
+      </div>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">Distance from edge to start position</span>
+    </div>
+
+    <div class="form-row">
+      <span class="form-label">Feedrate:</span>
+      <div class="input-with-unit">
+        <input type="number" id="side-probe-feedrate" value="100" min="10" step="10">
+        <span class="unit-suffix">mm/min</span>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <span class="form-label">Slow Feedrate:</span>
+      <div class="input-with-unit">
+        <input type="number" id="side-probe-feedrate-slow" value="25" min="5" step="5">
+        <span class="unit-suffix">mm/min</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Jog Controls</div>
+
+    <div class="form-row">
+      <span class="form-label">Jog Step:</span>
+      <div class="input-with-unit">
+        <input type="number" id="side-jog-step" value="1" min="0.1" step="0.1">
+        <span class="unit-suffix">mm</span>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button class="btn" onclick="jogAxis('X', parseFloat(document.getElementById('side-jog-step').value))" style="width: 60px;">+X</button>
+      <button class="btn" onclick="jogAxis('X', -parseFloat(document.getElementById('side-jog-step').value))" style="width: 60px;">-X</button>
+      <button class="btn" onclick="jogAxis('Y', parseFloat(document.getElementById('side-jog-step').value))" style="width: 60px;">+Y</button>
+      <button class="btn" onclick="jogAxis('Y', -parseFloat(document.getElementById('side-jog-step').value))" style="width: 60px;">-Y</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Point Status</div>
+
+    <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+      <div style="flex: 1;">
+        <div style="font-weight: bold; margin-bottom: 5px;">Point 1:</div>
+        <div id="side-point1-status" style="color: #999;">Not Set</div>
+        <div id="side-point1-coords" style="font-size: 12px; color: #666; margin-top: 3px;"></div>
+      </div>
+      <div style="flex: 1;">
+        <div style="font-weight: bold; margin-bottom: 5px;">Point 2:</div>
+        <div id="side-point2-status" style="color: #999;">Not Set</div>
+        <div id="side-point2-coords" style="font-size: 12px; color: #666; margin-top: 3px;"></div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button id="btn-side-set-point1" class="btn btn-primary" onclick="setSidePoint1AndProbe()">Set Point 1 &amp; Probe</button>
+      <button id="btn-side-set-point2" class="btn btn-primary" onclick="setSidePoint2AndProbe()" disabled>Set Point 2 &amp; Probe</button>
+      <button id="btn-side-reprobe-point2" class="btn" onclick="reprobeSidePoint2()" disabled>Re-Probe Point 2</button>
+      <button id="btn-side-probe-both" class="btn btn-primary" onclick="probeBothSidePoints()" disabled>Probe Both Points</button>
+      <button id="btn-side-clear" class="btn" onclick="clearSidePoints()">Clear All Points</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Results</div>
+    <div id="side-results" style="min-height: 100px; padding: 10px; background: #2a2a2a; border-radius: 4px; font-family: monospace; font-size: 13px; white-space: pre-wrap;">
+Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
+    </div>
   </div>
 </div>
 
@@ -770,7 +854,7 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.9.1';
+const VERSION = '1.11.0';
 const App = {
   ws: null,
   isConnected: false,
@@ -1962,6 +2046,281 @@ async function runCornerProbe() {
     App.probeInProgress = false;
     document.getElementById('corner-run-btn').disabled = false;
   }
+}
+
+//#region ===== SIDE PROBE =====
+const SideProbe = {
+  point1: null,  // { x, y, z, measured: number }
+  point2: null,
+  direction: null  // '+X', '-X', '+Y', '-Y'
+};
+
+function updateSideProbeButtons() {
+  const hasPoint1 = SideProbe.point1 !== null;
+  const hasPoint2 = SideProbe.point2 !== null;
+
+  document.getElementById('btn-side-set-point1').disabled = false;
+  document.getElementById('btn-side-set-point2').disabled = !hasPoint1;
+  document.getElementById('btn-side-reprobe-point2').disabled = !hasPoint2;
+  document.getElementById('btn-side-probe-both').disabled = !hasPoint2;
+}
+
+function clearSidePoints() {
+  SideProbe.point1 = null;
+  SideProbe.point2 = null;
+  SideProbe.direction = null;
+
+  document.getElementById('side-point1-status').textContent = 'Not Set';
+  document.getElementById('side-point1-status').style.color = '#999';
+  document.getElementById('side-point1-coords').textContent = '';
+
+  document.getElementById('side-point2-status').textContent = 'Not Set';
+  document.getElementById('side-point2-status').style.color = '#999';
+  document.getElementById('side-point2-coords').textContent = '';
+
+  document.getElementById('side-results').textContent = 'Ready to probe. Manually jog to first point and click "Set Point 1 & Probe".';
+
+  updateSideProbeButtons();
+}
+
+async function setSidePoint1AndProbe() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+
+  const direction = document.getElementById('side-probe-direction').value; // '+X', '-X', '+Y', '-Y'
+  const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
+  const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
+  const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+
+  if (!confirm(`Set Point 1 & Probe\n\nDirection: ${direction}\nProbe Distance: ${probeDistance}mm\n\nProbe positioned approximately ${probeDistance}mm from edge?\nContinue?`)) return;
+
+  App.probeInProgress = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+
+  try {
+    // Get current position
+    await sendAndWait('?');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const currentPos = { x: App.currentPos.x, y: App.currentPos.y, z: App.currentPos.z };
+
+    // Perform double-probe sequence
+    await sendAndWait('G91');
+    const axis = direction.charAt(1); // 'X' or 'Y'
+    const dir = direction.charAt(0) === '+' ? 1 : -1;
+
+    const probe1 = await probeAndCapture(axis, dir * probeDistance, feedrate);
+    await moveRel(axis, -dir * 2); // Retract 2mm
+    const probe2 = await probeAndCapture(axis, dir * 3, feedrateSlow); // Slow probe
+    const measured = (probe1[axis.toLowerCase()] + probe2[axis.toLowerCase()]) / 2;
+    await moveRel(axis, -dir * 2); // Retract again
+    await sendAndWait('G90');
+
+    // Store Point 1
+    SideProbe.point1 = {
+      x: currentPos.x,
+      y: currentPos.y,
+      z: currentPos.z,
+      measured: measured
+    };
+    SideProbe.direction = direction;
+
+    // Update UI
+    document.getElementById('side-point1-status').textContent = `Set (${direction})`;
+    document.getElementById('side-point1-status').style.color = '#4CAF50';
+    document.getElementById('side-point1-coords').textContent = `MCS: X${currentPos.x.toFixed(3)} Y${currentPos.y.toFixed(3)} Z${currentPos.z.toFixed(3)}`;
+
+    document.getElementById('side-results').textContent =
+      `Point 1 Set:\nPosition: X${currentPos.x.toFixed(3)} Y${currentPos.y.toFixed(3)}\nMeasured (${axis}): ${measured.toFixed(3)} mm\n\nManually jog to Point 2 and click "Set Point 2 & Probe".`;
+
+    updateSideProbeButtons();
+
+  } catch (err) {
+    console.error('Probe error:', err);
+    alert('Probe failed: ' + err.message);
+    try { sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+  }
+}
+
+async function setSidePoint2AndProbe() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+  if (!SideProbe.point1) { alert('Point 1 not set'); return; }
+
+  const direction = SideProbe.direction;
+  const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
+  const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
+  const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+
+  // Get current position for sanity check
+  await sendCommand('?');
+  await new Promise(resolve => setTimeout(resolve, 100));
+  const currentPos = { x: App.currentPos.x, y: App.currentPos.y, z: App.currentPos.z };
+
+  // Sanity check: only one axis should have changed
+  const axis = direction.charAt(1); // 'X' or 'Y'
+  const otherAxis = axis === 'X' ? 'Y' : 'X';
+  const axisDiff = Math.abs(currentPos[axis.toLowerCase()] - SideProbe.point1[axis.toLowerCase()]);
+  const otherAxisDiff = Math.abs(currentPos[otherAxis.toLowerCase()] - SideProbe.point1[otherAxis.toLowerCase()]);
+
+  if (axisDiff < 5) {
+    alert(`Warning: Point 2 must be at least 5mm away from Point 1 along ${axis} axis.\nCurrent distance: ${axisDiff.toFixed(2)}mm`);
+    return;
+  }
+
+  if (otherAxisDiff > 1) {
+    if (!confirm(`Warning: ${otherAxis} axis has changed by ${otherAxisDiff.toFixed(2)}mm.\nFor accurate alignment measurement, only ${axis} should change.\nContinue anyway?`)) {
+      return;
+    }
+  }
+
+  if (!confirm(`Set Point 2 & Probe\n\nDirection: ${direction}\nProbe Distance: ${probeDistance}mm\n\nProbe positioned approximately ${probeDistance}mm from edge?\nContinue?`)) return;
+
+  App.probeInProgress = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+
+  try {
+    // Perform double-probe sequence
+    await sendAndWait('G91');
+    const dir = direction.charAt(0) === '+' ? 1 : -1;
+
+    const probe1 = await probeAndCapture(axis, dir * probeDistance, feedrate);
+    await moveRel(axis, -dir * 2); // Retract 2mm
+    const probe2 = await probeAndCapture(axis, dir * 3, feedrateSlow); // Slow probe
+    const measured = (probe1[axis.toLowerCase()] + probe2[axis.toLowerCase()]) / 2;
+    await moveRel(axis, -dir * 2); // Retract again
+    await sendAndWait('G90');
+
+    // Store Point 2
+    SideProbe.point2 = {
+      x: currentPos.x,
+      y: currentPos.y,
+      z: currentPos.z,
+      measured: measured
+    };
+
+    // Update UI
+    document.getElementById('side-point2-status').textContent = `Set (${direction})`;
+    document.getElementById('side-point2-status').style.color = '#4CAF50';
+    document.getElementById('side-point2-coords').textContent = `MCS: X${currentPos.x.toFixed(3)} Y${currentPos.y.toFixed(3)} Z${currentPos.z.toFixed(3)}`;
+
+    // Calculate and display results
+    displaySideProbeResults();
+
+    updateSideProbeButtons();
+
+  } catch (err) {
+    console.error('Probe error:', err);
+    alert('Probe failed: ' + err.message);
+    try { sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+  }
+}
+
+async function reprobeSidePoint2() {
+  // Same as setSidePoint2AndProbe but keeps existing Point 2 position
+  await setSidePoint2AndProbe();
+}
+
+async function probeBothSidePoints() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+  if (!SideProbe.point1 || !SideProbe.point2) { alert('Both points must be set first'); return; }
+
+  const direction = SideProbe.direction;
+  const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
+  const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
+  const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+
+  if (!confirm(`Probe Both Points\n\nThis will automatically move to Point 1, probe, then move to Point 2 and probe.\n\nDirection: ${direction}\nProbe Distance: ${probeDistance}mm\n\nContinue?`)) return;
+
+  App.probeInProgress = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+
+  try {
+    const axis = direction.charAt(1); // 'X' or 'Y'
+    const dir = direction.charAt(0) === '+' ? 1 : -1;
+
+    // Move to Point 1
+    await sendAndWait('G90');
+    await sendAndWait(`G53 G0 X${SideProbe.point1.x.toFixed(3)} Y${SideProbe.point1.y.toFixed(3)} Z${SideProbe.point1.z.toFixed(3)}`);
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Probe Point 1
+    await sendAndWait('G91');
+    const probe1a = await probeAndCapture(axis, dir * probeDistance, feedrate);
+    await moveRel(axis, -dir * 2);
+    const probe1b = await probeAndCapture(axis, dir * 3, feedrateSlow);
+    const measured1 = (probe1a[axis.toLowerCase()] + probe1b[axis.toLowerCase()]) / 2;
+    await moveRel(axis, -dir * 2);
+    SideProbe.point1.measured = measured1;
+
+    // Move to Point 2
+    await sendAndWait('G90');
+    await sendAndWait(`G53 G0 X${SideProbe.point2.x.toFixed(3)} Y${SideProbe.point2.y.toFixed(3)} Z${SideProbe.point2.z.toFixed(3)}`);
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Probe Point 2
+    await sendAndWait('G91');
+    const probe2a = await probeAndCapture(axis, dir * probeDistance, feedrate);
+    await moveRel(axis, -dir * 2);
+    const probe2b = await probeAndCapture(axis, dir * 3, feedrateSlow);
+    const measured2 = (probe2a[axis.toLowerCase()] + probe2b[axis.toLowerCase()]) / 2;
+    await moveRel(axis, -dir * 2);
+    SideProbe.point2.measured = measured2;
+
+    await sendAndWait('G90');
+
+    // Display results
+    displaySideProbeResults();
+
+  } catch (err) {
+    console.error('Probe error:', err);
+    alert('Probe failed: ' + err.message);
+    try { sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+  }
+}
+
+function displaySideProbeResults() {
+  if (!SideProbe.point1 || !SideProbe.point2) return;
+
+  const axis = SideProbe.direction.charAt(1);
+  const measured1 = SideProbe.point1.measured;
+  const measured2 = SideProbe.point2.measured;
+  const difference = measured2 - measured1;
+
+  // Calculate the travel axis distance
+  const travelAxis = axis === 'X' ? 'Y' : 'X';
+  const travelDistance = Math.abs(SideProbe.point2[travelAxis.toLowerCase()] - SideProbe.point1[travelAxis.toLowerCase()]);
+
+  // Calculate angle and correction
+  const angleRad = Math.atan2(Math.abs(difference), travelDistance);
+  const angleDeg = angleRad * (180 / Math.PI);
+  const correctionDir = difference > 0 ? 'clockwise' : 'counter-clockwise';
+
+  let resultsText = `Side Probe Results:\n\n`;
+  resultsText += `Point 1 (${axis}): ${measured1.toFixed(3)} mm\n`;
+  resultsText += `Point 2 (${axis}): ${measured2.toFixed(3)} mm\n`;
+  resultsText += `Difference: ${difference.toFixed(3)} mm\n`;
+  resultsText += `Travel Distance (${travelAxis}): ${travelDistance.toFixed(3)} mm\n`;
+  resultsText += `Angle: ${angleDeg.toFixed(3)}°\n\n`;
+
+  if (Math.abs(difference) < 0.01) {
+    resultsText += `✓ Workpiece is parallel to ${axis} axis (within 0.01mm tolerance).`;
+  } else {
+    resultsText += `⚠ Workpiece is NOT parallel.\n`;
+    resultsText += `Rotate ${correctionDir} by ${angleDeg.toFixed(3)}° to align with ${axis} axis.\n`;
+    resultsText += `Or adjust by ${Math.abs(difference).toFixed(3)} mm over ${travelDistance.toFixed(1)} mm distance.`;
+  }
+
+  document.getElementById('side-results').textContent = resultsText;
 }
 //#endregion
 

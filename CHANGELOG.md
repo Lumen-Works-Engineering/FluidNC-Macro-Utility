@@ -5,6 +5,32 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2024-12-28
+
+### Added
+- **NEW FEATURE: Side Probe (Two-Point Alignment)** - Check if workpiece is parallel to axis
+  - **Purpose**: Measure workpiece edge at two points to verify alignment
+  - **UI Settings**:
+    - Probe Direction: Right (+X), Left (-X), Up (+Y), Down (-Y)
+    - Probe Distance: Distance from edge to start position (default 5mm)
+    - Feedrate: Fast probe speed (default 100mm/min)
+    - Slow Feedrate: Precision probe speed (default 25mm/min)
+  - **Jog Controls**: Compact XY jog buttons on Side Probe tab for convenience
+  - **Workflow**:
+    1. Manually jog to Point 1 (~5mm from edge)
+    2. Click "Set Point 1 & Probe" - records position and probes
+    3. Manually jog to Point 2 (moving only one axis)
+    4. Click "Set Point 2 & Probe" - records position and probes
+    5. View results with difference, angle, and correction instructions
+  - **Additional Features**:
+    - "Re-Probe Point 2" button for adjustment verification
+    - "Probe Both Points" auto-sequence using saved positions (G53 moves)
+    - Sanity check: warns if Point 2 moved wrong axis or too close to Point 1
+    - Results show: measurements, difference, travel distance, angle, correction direction
+    - Tolerance check: ✓ if within 0.01mm, ⚠ with rotation/adjustment instructions if not
+  - **Point Status Display**: Shows which points are set with coordinates
+  - **State Management**: Clear button resets all points for fresh start
+
 ## [1.10.3] - 2024-12-27
 
 ### Fixed

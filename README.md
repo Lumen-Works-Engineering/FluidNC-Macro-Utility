@@ -2,7 +2,7 @@
 
 A web-based utility for CNC probe operations with FluidNC controllers. Consolidates multiple probing functions into a single, portable HTML file that connects via WebSocket.
 
-![Version](https://img.shields.io/badge/version-1.10.3-blue)
+![Version](https://img.shields.io/badge/version-1.11.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
@@ -20,8 +20,8 @@ A web-based utility for CNC probe operations with FluidNC controllers. Consolida
 | Control | ✅ Complete | Position display (MCS/WCS), jogging, homing, output toggles |
 | Cylinder Probe | ✅ Complete | External cylinder/boss center finding |
 | Hole Probe | ✅ Complete | Internal hole/bore center finding |
-| Corner Probe | ✅ Complete | Inside/outside corner detection (8 quadrants) |
-| Side Align | 🚧 Planned | Two-point alignment to axis |
+| Corner Probe | ✅ Complete | Outside corner detection (SW/SE/NW/NE) |
+| Side Align | ✅ Complete | Two-point alignment to check workpiece parallel to axis |
 | Height Map | 🚧 Planned | T-slot surface mapping |
 | Settings | ✅ Complete | All configuration with JSON editor |
 
@@ -85,6 +85,29 @@ Use for finding the XY corner of rectangular workpieces (both inside and outside
 
 **Key Difference from Cylinder/Hole**: No Z movement - you position Z manually before probing. The dropdown labels clearly show which direction the probe will move.
 
+### Side Align Tab
+Use for two-point alignment to check if workpiece edge is parallel to an axis.
+
+1. **Select Probe Direction**: Right (+X), Left (-X), Up (+Y), Down (-Y)
+2. **Manually jog to Point 1** (~5mm from workpiece edge)
+3. Click **Set Point 1 & Probe** - records position and performs double-probe
+4. **Manually jog to Point 2** (move only the axis you're measuring against)
+   - Example: If probing in +X direction, only move Y axis between points
+5. Click **Set Point 2 & Probe** - records position and probes
+6. **View Results**:
+   - Point 1 and Point 2 measurements
+   - Difference between measurements
+   - Angle of misalignment
+   - Correction instructions (rotate clockwise/counter-clockwise)
+7. **Optional Features**:
+   - **Re-Probe Point 2**: After adjusting workpiece, re-probe to verify
+   - **Probe Both Points**: Auto-sequence that moves to saved positions and probes both
+   - **Clear All Points**: Reset to start over
+
+**Tolerance**: Results show ✓ if within 0.01mm, or ⚠ with rotation angle if not parallel.
+
+**Built-in Jog Controls**: Compact XY jog buttons included on tab for convenience.
+
 ### Saving Settings
 Use browser **File → Save As** (Ctrl+S) to save the HTML file with your current settings embedded. Settings include:
 - Connection parameters
@@ -139,7 +162,7 @@ Use `Ctrl+Shift+[` to fold regions in VS Code.
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-Current version: **1.10.3** (2024-12-27)
+Current version: **1.11.0** (2024-12-28)
 
 ## Contributing
 
