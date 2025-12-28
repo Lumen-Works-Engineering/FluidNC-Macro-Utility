@@ -5,6 +5,40 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2024-12-28
+
+### Fixed
+- **Side Probe: Z raise symmetry in "Probe Both Points"** - Now raises Z when moving to Point 1
+  - **Problem**: Raised Z moving Point 1→Point 2, but NOT when moving back to Point 1 on second run
+  - **Impact**: Could crash into clamps/fixtures when re-running "Probe Both Points"
+  - **Fix**: Added Z raise logic before moving to Point 1 (same as Point 2)
+  - **Behavior**: If "Raise Z" enabled, BOTH moves (to Point 1 and to Point 2) raise Z for safety
+
+### Added
+- **Side Probe: Timestamp on results** - Shows when last probed
+  - Format: "Side Probe Results - 2:45:32 PM"
+  - Helps verify results are fresh after re-probing
+- **Side Probe: Last probe difference tracking** - Shows if adjustment made it better or worse
+  - Example: "Last Probe Difference: 0.150 mm (✓ BETTER by 0.120mm)"
+  - Shows: "✓ BETTER", "⚠ WORSE", or "= SAME" compared to previous probe
+  - Cleared when clicking "Clear All Points"
+  - **Impact**: Immediate feedback on whether adjustment worked
+- **Side Probe: Point 1 as reference in results** - Clarifies Point 1 should not move
+  - Labels: "Point 1 (Reference)" and "Point 2 (Adjust)"
+  - Instructions always frame as "Adjust Point 2 to match Point 1"
+  - Note at bottom: "(Point 1 = reference, do not move if possible)"
+
+### Changed
+- **Side Probe: Jog controls moved to bottom** - Results now visible without scrolling
+  - **Old**: Settings → Jog → Point Status → Results (results below fold)
+  - **New**: Settings → Point Status → Results → Jog (results always visible)
+  - **Impact**: No scrolling needed to see alignment results
+- **Side Probe: Button state workflow guidance** - Visual highlighting shows next action
+  - **Fresh start**: "Set Point 1 & Probe" highlighted (blue), others disabled/grayed
+  - **After Point 1**: "Set Point 2 & Probe" highlighted, Point 1 de-emphasized, Clear enabled
+  - **After both points**: "Re-Probe Point 2" and "Probe Both Points" highlighted
+  - **Impact**: Always clear what the next step is in the workflow
+
 ## [1.11.6] - 2024-12-28
 
 ### Fixed

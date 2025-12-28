@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.11.6</title>
+<title>FluidNC Probe Utility v1.12.0</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -662,6 +662,38 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
   </div>
 
   <div class="section">
+    <div class="section-title">Point Status</div>
+
+    <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+      <div style="flex: 1;">
+        <div style="font-weight: bold; margin-bottom: 5px;">Point 1:</div>
+        <div id="side-point1-status" style="color: #999;">Not Set</div>
+        <div id="side-point1-coords" style="font-size: 12px; color: #666; margin-top: 3px;"></div>
+      </div>
+      <div style="flex: 1;">
+        <div style="font-weight: bold; margin-bottom: 5px;">Point 2:</div>
+        <div id="side-point2-status" style="color: #999;">Not Set</div>
+        <div id="side-point2-coords" style="font-size: 12px; color: #666; margin-top: 3px;"></div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button id="btn-side-set-point1" class="btn" onclick="setSidePoint1AndProbe()">Set Point 1 &amp; Probe</button>
+      <button id="btn-side-set-point2" class="btn" onclick="setSidePoint2AndProbe()" disabled>Set Point 2 &amp; Probe</button>
+      <button id="btn-side-reprobe-point2" class="btn" onclick="reprobeSidePoint2()" disabled>Re-Probe Point 2</button>
+      <button id="btn-side-probe-both" class="btn" onclick="probeBothSidePoints()" disabled>Probe Both Points</button>
+      <button id="btn-side-clear" class="btn" onclick="clearSidePoints()" disabled>Clear All Points</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Results</div>
+    <div id="side-results" style="min-height: 100px; padding: 10px; background: #2a2a2a; border-radius: 4px; font-family: monospace; font-size: 13px; white-space: pre-wrap;">
+Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
+    </div>
+  </div>
+
+  <div class="section">
     <div class="section-title">Jog Controls</div>
 
     <div class="jog-container">
@@ -681,38 +713,6 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
       </div>
     </div>
     <p class="text-muted mt-1" style="text-align: center; font-size: 11px;">Click and hold to jog</p>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Point Status</div>
-
-    <div style="display: flex; gap: 20px; margin-bottom: 15px;">
-      <div style="flex: 1;">
-        <div style="font-weight: bold; margin-bottom: 5px;">Point 1:</div>
-        <div id="side-point1-status" style="color: #999;">Not Set</div>
-        <div id="side-point1-coords" style="font-size: 12px; color: #666; margin-top: 3px;"></div>
-      </div>
-      <div style="flex: 1;">
-        <div style="font-weight: bold; margin-bottom: 5px;">Point 2:</div>
-        <div id="side-point2-status" style="color: #999;">Not Set</div>
-        <div id="side-point2-coords" style="font-size: 12px; color: #666; margin-top: 3px;"></div>
-      </div>
-    </div>
-
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <button id="btn-side-set-point1" class="btn btn-primary" onclick="setSidePoint1AndProbe()">Set Point 1 &amp; Probe</button>
-      <button id="btn-side-set-point2" class="btn btn-primary" onclick="setSidePoint2AndProbe()" disabled>Set Point 2 &amp; Probe</button>
-      <button id="btn-side-reprobe-point2" class="btn" onclick="reprobeSidePoint2()" disabled>Re-Probe Point 2</button>
-      <button id="btn-side-probe-both" class="btn btn-primary" onclick="probeBothSidePoints()" disabled>Probe Both Points</button>
-      <button id="btn-side-clear" class="btn" onclick="clearSidePoints()">Clear All Points</button>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Results</div>
-    <div id="side-results" style="min-height: 100px; padding: 10px; background: #2a2a2a; border-radius: 4px; font-family: monospace; font-size: 13px; white-space: pre-wrap;">
-Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
-    </div>
   </div>
 </div>
 
@@ -874,7 +874,7 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.11.6';
+const VERSION = '1.12.0';
 const App = {
   ws: null,
   isConnected: false,
@@ -2072,23 +2072,65 @@ async function runCornerProbe() {
 const SideProbe = {
   point1: null,  // { x, y, z, measured: number }
   point2: null,
-  direction: null  // '+X', '-X', '+Y', '-Y'
+  direction: null,  // '+X', '-X', '+Y', '-Y'
+  lastDifference: null,  // Track previous difference for comparison
+  lastProbeTime: null  // Timestamp of last probe
 };
 
 function updateSideProbeButtons() {
   const hasPoint1 = SideProbe.point1 !== null;
   const hasPoint2 = SideProbe.point2 !== null;
 
-  document.getElementById('btn-side-set-point1').disabled = false;
-  document.getElementById('btn-side-set-point2').disabled = !hasPoint1;
-  document.getElementById('btn-side-reprobe-point2').disabled = !hasPoint2;
-  document.getElementById('btn-side-probe-both').disabled = !hasPoint2;
+  const btnPoint1 = document.getElementById('btn-side-set-point1');
+  const btnPoint2 = document.getElementById('btn-side-set-point2');
+  const btnReprobe = document.getElementById('btn-side-reprobe-point2');
+  const btnBoth = document.getElementById('btn-side-probe-both');
+  const btnClear = document.getElementById('btn-side-clear');
+
+  // Fresh start: Point 1 is the next action
+  if (!hasPoint1) {
+    btnPoint1.disabled = false;
+    btnPoint1.classList.add('btn-primary'); // Highlighted
+    btnPoint2.disabled = true;
+    btnPoint2.classList.remove('btn-primary');
+    btnReprobe.disabled = true;
+    btnReprobe.classList.remove('btn-primary');
+    btnBoth.disabled = true;
+    btnBoth.classList.remove('btn-primary');
+    btnClear.disabled = true;
+  }
+  // Point 1 set: Point 2 is the next action
+  else if (!hasPoint2) {
+    btnPoint1.disabled = false;
+    btnPoint1.classList.remove('btn-primary'); // De-emphasized
+    btnPoint2.disabled = false;
+    btnPoint2.classList.add('btn-primary'); // Highlighted
+    btnReprobe.disabled = true;
+    btnReprobe.classList.remove('btn-primary');
+    btnBoth.disabled = true;
+    btnBoth.classList.remove('btn-primary');
+    btnClear.disabled = false;
+  }
+  // Both points set: Re-Probe and Probe Both are next actions
+  else {
+    btnPoint1.disabled = false;
+    btnPoint1.classList.remove('btn-primary'); // De-emphasized
+    btnPoint2.disabled = false;
+    btnPoint2.classList.remove('btn-primary'); // De-emphasized
+    btnReprobe.disabled = false;
+    btnReprobe.classList.add('btn-primary'); // Highlighted
+    btnBoth.disabled = false;
+    btnBoth.classList.add('btn-primary'); // Highlighted
+    btnClear.disabled = false;
+  }
 }
 
 function clearSidePoints() {
   SideProbe.point1 = null;
   SideProbe.point2 = null;
   SideProbe.direction = null;
+  SideProbe.lastDifference = null;
+  SideProbe.lastProbeTime = null;
 
   document.getElementById('side-point1-status').textContent = 'Not Set';
   document.getElementById('side-point1-status').style.color = '#999';
@@ -2274,9 +2316,23 @@ async function probeBothSidePoints() {
     const axis = direction.charAt(1); // 'X' or 'Y'
     const dir = direction.charAt(0) === '+' ? 1 : -1;
 
-    // Move to Point 1
-    await sendAndWait('G90');
-    await sendAndWait(`G53 G0 X${SideProbe.point1.x.toFixed(3)} Y${SideProbe.point1.y.toFixed(3)} Z${SideProbe.point1.z.toFixed(3)}`);
+    // Move to Point 1 (with optional Z raise for safety)
+    if (raiseZ) {
+      // Raise Z to safe height (relative)
+      await sendAndWait('G91');
+      await moveRel('Z', zSafe);
+      await sendAndWait('G90');
+      // Move XY to Point 1
+      await sendAndWait(`G53 G0 X${SideProbe.point1.x.toFixed(3)} Y${SideProbe.point1.y.toFixed(3)}`);
+      // Lower Z back down (relative)
+      await sendAndWait('G91');
+      await moveRel('Z', -zSafe);
+      await sendAndWait('G90');
+    } else {
+      // Direct move to Point 1 (XYZ together)
+      await sendAndWait('G90');
+      await sendAndWait(`G53 G0 X${SideProbe.point1.x.toFixed(3)} Y${SideProbe.point1.y.toFixed(3)} Z${SideProbe.point1.z.toFixed(3)}`);
+    }
     await new Promise(resolve => setTimeout(resolve, 200));
 
     // Probe Point 1
@@ -2347,27 +2403,48 @@ function displaySideProbeResults() {
   // Determine which point is further from edge (Point 1 or Point 2)
   const point1Further = measured1 > measured2;
 
-  let resultsText = `Side Probe Results:\n\n`;
-  resultsText += `Point 1 (${probeAxis}): ${measured1.toFixed(3)} mm from edge\n`;
-  resultsText += `Point 2 (${probeAxis}): ${measured2.toFixed(3)} mm from edge\n`;
+  // Get timestamp
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString();
+  SideProbe.lastProbeTime = timeStr;
+
+  let resultsText = `Side Probe Results - ${timeStr}\n\n`;
+  resultsText += `Point 1 (Reference): ${measured1.toFixed(3)} mm from edge\n`;
+  resultsText += `Point 2 (Adjust):    ${measured2.toFixed(3)} mm from edge\n`;
   resultsText += `Difference: ${Math.abs(difference).toFixed(3)} mm\n`;
+
+  // Show comparison to last probe if available
+  if (SideProbe.lastDifference !== null) {
+    const change = Math.abs(difference) - SideProbe.lastDifference;
+    if (change < -0.001) {
+      resultsText += `Last Probe Difference: ${SideProbe.lastDifference.toFixed(3)} mm (✓ BETTER by ${Math.abs(change).toFixed(3)}mm)\n`;
+    } else if (change > 0.001) {
+      resultsText += `Last Probe Difference: ${SideProbe.lastDifference.toFixed(3)} mm (⚠ WORSE by ${change.toFixed(3)}mm)\n`;
+    } else {
+      resultsText += `Last Probe Difference: ${SideProbe.lastDifference.toFixed(3)} mm (= SAME)\n`;
+    }
+  }
+
   resultsText += `Travel Distance (${travelAxis}): ${travelDistance.toFixed(1)} mm\n\n`;
+
+  // Store current difference for next comparison
+  SideProbe.lastDifference = Math.abs(difference);
 
   if (Math.abs(difference) < 0.01) {
     resultsText += `✓ ALIGNED - Workpiece is parallel (within 0.01mm tolerance)`;
   } else {
-    resultsText += `⚠ NOT PARALLEL - Correction needed:\n\n`;
+    resultsText += `⚠ NOT PARALLEL - Adjust Point 2 to match Point 1:\n\n`;
 
-    // Provide practical instructions based on which end needs to move
+    // Always frame as adjusting Point 2 to match Point 1 (reference)
     if (point1Further) {
-      resultsText += `At Point 1 (near end), workpiece is ${Math.abs(difference).toFixed(2)}mm FURTHER from edge.\n`;
-      resultsText += `Move Point 1 end CLOSER to edge by ${Math.abs(difference).toFixed(2)}mm.\n`;
+      resultsText += `Point 2 is ${Math.abs(difference).toFixed(2)}mm CLOSER to edge than Point 1.\n`;
+      resultsText += `Move Point 2 location AWAY from edge by ${Math.abs(difference).toFixed(2)}mm.\n`;
     } else {
-      resultsText += `At Point 2 (far end), workpiece is ${Math.abs(difference).toFixed(2)}mm FURTHER from edge.\n`;
-      resultsText += `Move Point 2 end CLOSER to edge by ${Math.abs(difference).toFixed(2)}mm.\n`;
+      resultsText += `Point 2 is ${Math.abs(difference).toFixed(2)}mm FURTHER from edge than Point 1.\n`;
+      resultsText += `Move Point 2 location CLOSER to edge by ${Math.abs(difference).toFixed(2)}mm.\n`;
     }
 
-    resultsText += `\nOr: Adjust ${Math.abs(difference).toFixed(2)}mm over ${travelDistance.toFixed(1)}mm distance.`;
+    resultsText += `\n(Point 1 = reference, do not move if possible)`;
   }
 
   document.getElementById('side-results').textContent = resultsText;
@@ -2386,6 +2463,9 @@ function init() {
   loadCylinderPresets();
   loadHolePresets();
   loadCornerPresets();
+
+  // Initialize Side Probe button states
+  updateSideProbeButtons();
 
   // Update tip diameter displays
   document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
