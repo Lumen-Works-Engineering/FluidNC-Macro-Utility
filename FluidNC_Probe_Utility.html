@@ -2746,6 +2746,8 @@ async function setHeightmapStartPoint() {
 
   if (!confirm('Set current position as X0 Y0 in work coordinate system (G10 L20 P1 X0 Y0)?')) return;
 
+  const { sendAndWait } = createProbeHelpers();
+
   try {
     await sendAndWait('G10 L20 P1 X0 Y0');
     await sendAndWait('$#');  // Request WCO update
@@ -2765,6 +2767,9 @@ async function startHeightmapProbe() {
     alert('Probe already in progress');
     return;
   }
+
+  // Create probe helpers
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
 
   // Parse configuration
   HeightMap.slotX = parseCSV(document.getElementById('hm-slot-x').value);
