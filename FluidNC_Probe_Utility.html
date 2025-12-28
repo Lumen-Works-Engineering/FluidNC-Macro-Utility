@@ -2830,16 +2830,21 @@ async function startHeightmapProbe() {
         await sendAndWait('G90');  // Back to absolute
 
         // Parse probe result
+        console.log('Probe response:', response);
         const match = response.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);
+        console.log('Regex match:', match);
+
         if (match) {
           const px = parseFloat(match[1]);
           const py = parseFloat(match[2]);
           const pz = parseFloat(match[3]);
           const success = parseInt(match[4]) === 1;
 
+          console.log(`Parsed: X=${px}, Y=${py}, Z=${pz}, success=${success}`);
           HeightMap.probeData.push({ x: px, y: py, z: pz, success });
           HeightMap.completedPoints++;
         } else {
+          console.log('Probe failed - no match');
           // Probe failed
           HeightMap.probeData.push({ x: x, y: y, z: null, success: false });
           HeightMap.completedPoints++;
