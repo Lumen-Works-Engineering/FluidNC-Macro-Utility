@@ -5,6 +5,15 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.5] - 2024-12-28
+
+### Fixed
+- **Side Probe: Undefined variable in probe sequence** - Fixed "axis is not defined" error
+  - **Error**: "ReferenceError: axis is not defined" at line 2212 when probing Point 2
+  - **Root Cause**: In v1.11.4, renamed `axis` to `probeAxis` in sanity check, but forgot to define `axis` for probe sequence
+  - **Fix**: Added `const axis = probeAxis;` before probe sequence to restore variable
+  - **Impact**: Point 2 probing now works without crashing
+
 ## [1.11.4] - 2024-12-28
 
 ### Fixed

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.11.4</title>
+<title>FluidNC Probe Utility v1.11.5</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -874,7 +874,7 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.11.4';
+const VERSION = '1.11.5';
 const App = {
   ws: null,
   isConnected: false,
@@ -2207,6 +2207,7 @@ async function setSidePoint2AndProbe() {
   try {
     // Perform double-probe sequence
     await sendAndWait('G91');
+    const axis = probeAxis; // Use probeAxis from sanity check above
     const dir = direction.charAt(0) === '+' ? 1 : -1;
 
     const probe1 = await probeAndCapture(axis, dir * probeDistance, feedrate);
