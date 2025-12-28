@@ -5,6 +5,25 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.4] - 2024-12-28
+
+### Fixed
+- **CRITICAL: Side Probe axis logic inverted** - Fixed sanity check comparing wrong axes
+  - **Problem**: Utility rejected Point 2 saying "X must be 5mm apart" when user correctly moved 141mm in Y
+  - **Root Cause**: Logic checked that probe axis (X) changed, but should check travel axis (Y) changed
+  - **Example**: Probing +X (right), user moves along Y from 86→227mm (correct), but X only changed 0.05mm
+  - **Old logic**: "X axis must change by 5mm" ❌ (wrong - X is probe direction, should stay constant)
+  - **New logic**: "Y axis must change by 5mm" ✓ (correct - Y is travel direction)
+  - **Fix**: Swapped axis/otherAxis to probeAxis/travelAxis with clearer variable names
+  - **Impact**: Now correctly validates that user moved along perpendicular axis
+
+### Changed
+- **Side Probe: Jog buttons now continuous hold-to-jog** - Matches Control tab behavior
+  - **Old**: Click buttons with step size input (not practical for long parts)
+  - **New**: Arrow buttons (▲▼◀▶) with click-and-hold continuous jogging
+  - **Removed**: Step size input and `jogAxis()` function (now uses shared jog event listeners)
+  - **Impact**: Can jog full length of workpiece by holding arrow button
+
 ## [1.11.3] - 2024-12-28
 
 ### Fixed

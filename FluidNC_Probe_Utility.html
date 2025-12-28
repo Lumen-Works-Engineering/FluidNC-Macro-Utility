@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.11.3</title>
+<title>FluidNC Probe Utility v1.11.4</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -664,20 +664,23 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
   <div class="section">
     <div class="section-title">Jog Controls</div>
 
-    <div class="form-row">
-      <span class="form-label">Jog Step:</span>
-      <div class="input-with-unit">
-        <input type="number" id="side-jog-step" value="1" min="0.1" step="0.1">
-        <span class="unit-suffix">mm</span>
+    <div class="jog-container">
+      <div>
+        <div class="jog-xy">
+          <div class="jog-placeholder"></div>
+          <button class="jog-btn" data-axis="Y" data-dir="+">▲</button>
+          <div class="jog-placeholder"></div>
+          <button class="jog-btn" data-axis="X" data-dir="-">◀</button>
+          <div class="jog-placeholder"></div>
+          <button class="jog-btn" data-axis="X" data-dir="+">▶</button>
+          <div class="jog-placeholder"></div>
+          <button class="jog-btn" data-axis="Y" data-dir="-">▼</button>
+          <div class="jog-placeholder"></div>
+        </div>
+        <div class="jog-label">XY</div>
       </div>
     </div>
-
-    <div style="display: flex; gap: 10px; margin-top: 10px;">
-      <button class="btn" onclick="jogAxis('X', parseFloat(document.getElementById('side-jog-step').value))" style="width: 60px;">+X</button>
-      <button class="btn" onclick="jogAxis('X', -parseFloat(document.getElementById('side-jog-step').value))" style="width: 60px;">-X</button>
-      <button class="btn" onclick="jogAxis('Y', parseFloat(document.getElementById('side-jog-step').value))" style="width: 60px;">+Y</button>
-      <button class="btn" onclick="jogAxis('Y', -parseFloat(document.getElementById('side-jog-step').value))" style="width: 60px;">-Y</button>
-    </div>
+    <p class="text-muted mt-1" style="text-align: center; font-size: 11px;">Click and hold to jog</p>
   </div>
 
   <div class="section">
@@ -871,7 +874,7 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.11.3';
+const VERSION = '1.11.4';
 const App = {
   ws: null,
   isConnected: false,
@@ -2072,13 +2075,6 @@ const SideProbe = {
   direction: null  // '+X', '-X', '+Y', '-Y'
 };
 
-// Simple jog function for Side Probe tab
-function jogAxis(axis, distance) {
-  if (!App.isConnected) { alert('Not connected'); return; }
-  const speed = (axis === 'Z') ? App.settings.jog.zSpeed : App.settings.jog.xySpeed;
-  sendCommand('$J=G91 G21 ' + axis + distance.toFixed(3) + ' F' + speed);
-}
-
 function updateSideProbeButtons() {
   const hasPoint1 = SideProbe.point1 !== null;
   const hasPoint2 = SideProbe.point2 !== null;
@@ -2184,19 +2180,21 @@ async function setSidePoint2AndProbe() {
   await new Promise(resolve => setTimeout(resolve, 200)); // Extra time for position update
   const currentPos = { x: App.position.mcs.x, y: App.position.mcs.y, z: App.position.mcs.z };
 
-  // Sanity check: only one axis should have changed
-  const axis = direction.charAt(1); // 'X' or 'Y'
-  const otherAxis = axis === 'X' ? 'Y' : 'X';
-  const axisDiff = Math.abs(currentPos[axis.toLowerCase()] - SideProbe.point1[axis.toLowerCase()]);
-  const otherAxisDiff = Math.abs(currentPos[otherAxis.toLowerCase()] - SideProbe.point1[otherAxis.toLowerCase()]);
+  // Sanity check: user should move along the perpendicular axis, not the probe direction
+  const probeAxis = direction.charAt(1); // 'X' or 'Y' - the axis we're probing toward
+  const travelAxis = probeAxis === 'X' ? 'Y' : 'X'; // The axis we should move along
+  const probeAxisDiff = Math.abs(currentPos[probeAxis.toLowerCase()] - SideProbe.point1[probeAxis.toLowerCase()]);
+  const travelAxisDiff = Math.abs(currentPos[travelAxis.toLowerCase()] - SideProbe.point1[travelAxis.toLowerCase()]);
 
-  if (axisDiff < 5) {
-    alert(`Warning: Point 2 must be at least 5mm away from Point 1 along ${axis} axis.\nCurrent distance: ${axisDiff.toFixed(2)}mm`);
+  // Check that we moved at least 5mm along the travel axis (perpendicular to probe direction)
+  if (travelAxisDiff < 5) {
+    alert(`Warning: Point 2 must be at least 5mm away from Point 1 along ${travelAxis} axis.\nCurrent distance: ${travelAxisDiff.toFixed(2)}mm\n\n(You should move along ${travelAxis}, not ${probeAxis})`);
     return;
   }
 
-  if (otherAxisDiff > 1) {
-    if (!confirm(`Warning: ${otherAxis} axis has changed by ${otherAxisDiff.toFixed(2)}mm.\nFor accurate alignment measurement, only ${axis} should change.\nContinue anyway?`)) {
+  // Warn if probe axis changed too much (should stay roughly same distance from edge)
+  if (probeAxisDiff > 1) {
+    if (!confirm(`Warning: ${probeAxis} axis has changed by ${probeAxisDiff.toFixed(2)}mm.\nFor accurate alignment measurement, you should only move along ${travelAxis} axis.\nContinue anyway?`)) {
       return;
     }
   }
