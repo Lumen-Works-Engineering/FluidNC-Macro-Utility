@@ -5,16 +5,34 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2024-12-27
+
+### Changed
+- **MAJOR: Complete Corner Probe rewrite** - Implemented per user specification document
+  - **New UI Settings**:
+    - Setting 1: Corner Location dropdown (SW, SE, NW, NE) - user's perspective
+    - Setting 2: Corner Type dropdown (Outside/Inside) - inside disabled for now
+    - Setting 3: Start Distance (A) - default 5mm from each wall
+    - Setting 4: Travel Distance (2→B) - default 10mm (auto 2× start distance)
+    - Setting 5: Move to Corner checkbox - optional Z-safe move at end
+    - Setting 6: Z Safe Distance - height to raise before moving to corner
+  - **New Probe Sequence** (matches PDF exactly):
+    - Step 7: Probe first wall from position (A)
+    - Step 8: Move to position (B) - perpendicular to first wall
+    - Step 9: Move to position (C) - past first wall by startDist
+    - Step 10: Probe second wall
+    - Step 11: Optionally raise Z and move to corner (D)
+    - Step 12: Display results with Set X/Y Zero buttons
+  - **Removed**: Old confusing ±X±Y notation and complicated direction logic
+  - **Added**: Sanity check (travel distance ≥ start distance)
+  - **Updated**: Setup instructions to match new L-shaped probe pattern
+  - **Updated**: Presets to save all new settings
+  - **Impact**: Corner probe now follows industry-standard workflow with clear positioning
+
 ## [1.9.5] - 2024-12-27
 
 ### Fixed
-- **CRITICAL: Corner Probe direction logic** - Completely rewrote probe movement logic
-  - **Root Cause**: Overcomplicated logic with `probeDir` multiplier was moving in wrong directions
-  - **Old behavior**: Moved AWAY from workpiece before probing, causing timeouts and wrong direction probes
-  - **New behavior**: Simplified - just probe in the xDir/yDir direction (toward workpiece for outside corners)
-  - Removed unnecessary "move to search start" logic
-  - Both OUTSIDE and INSIDE corners now use same simple logic: probe in the direction indicated by xDir/yDir
-  - **Impact**: Corner probe now actually works correctly for all 8 corner types
+- **CRITICAL: Corner Probe direction logic** - Attempted fix (superseded by v1.10.0 complete rewrite)
 
 ## [1.9.4] - 2024-12-27
 

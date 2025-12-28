@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.9.5</title>
+<title>FluidNC Probe Utility v1.10.0</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -501,28 +501,36 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
           <input type="text" id="corner-preset-name" placeholder="e.g., Front Left">
         </div>
         <div class="form-row">
-          <span class="form-label">Corner Type:</span>
-          <select id="corner-type" style="width: 350px;">
-            <optgroup label="OUTSIDE Corner (typical workpiece edge)">
-              <option value="outside-xminus-yminus">Bottom-Left (probe from lower-left, move +X +Y)</option>
-              <option value="outside-xplus-yminus">Bottom-Right (probe from lower-right, move -X +Y)</option>
-              <option value="outside-xminus-yplus">Top-Left (probe from upper-left, move +X -Y)</option>
-              <option value="outside-xplus-yplus">Top-Right (probe from upper-right, move -X -Y)</option>
-            </optgroup>
-            <optgroup label="INSIDE Corner (pocket or cutout)">
-              <option value="inside-xminus-yminus">Bottom-Left (inside pocket, probe -X -Y)</option>
-              <option value="inside-xplus-yminus">Bottom-Right (inside pocket, probe +X -Y)</option>
-              <option value="inside-xminus-yplus">Top-Left (inside pocket, probe -X +Y)</option>
-              <option value="inside-xplus-yplus">Top-Right (inside pocket, probe +X +Y)</option>
-            </optgroup>
+          <span class="form-label">Corner Location:</span>
+          <select id="corner-location" style="width: 250px;">
+            <option value="SW">SW - Southwest (Bottom-Left)</option>
+            <option value="SE">SE - Southeast (Bottom-Right)</option>
+            <option value="NW">NW - Northwest (Top-Left)</option>
+            <option value="NE">NE - Northeast (Top-Right)</option>
           </select>
         </div>
         <div class="form-row">
-          <span class="form-label">Search Distance:</span>
+          <span class="form-label">Corner Type:</span>
+          <select id="corner-type" style="width: 250px;">
+            <option value="outside">Outside Corner (workpiece edge)</option>
+            <option value="inside" disabled>Inside Corner (coming soon)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Start Distance (A):</span>
           <div class="input-with-unit">
-            <input type="number" id="corner-search-dist" value="30" min="5" step="1">
+            <input type="number" id="corner-start-dist" value="5" min="1" step="0.5">
             <span class="unit-suffix">mm</span>
           </div>
+          <span style="font-size: 12px; color: #999; margin-left: 8px;">Distance from each wall at start</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Travel Distance (2→B):</span>
+          <div class="input-with-unit">
+            <input type="number" id="corner-travel-dist" value="10" min="2" step="1">
+            <span class="unit-suffix">mm</span>
+          </div>
+          <span style="font-size: 12px; color: #999; margin-left: 8px;">Auto: 2× start distance</span>
         </div>
         <div class="form-row">
           <span class="form-label">Feedrate:</span>
@@ -532,28 +540,36 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
           </div>
         </div>
         <div class="form-row">
-          <span class="form-label">Probe Tip Ø:</span>
+          <span class="form-label">Move to Corner:</span>
+          <input type="checkbox" id="corner-move-to-corner" checked style="width: auto; margin-left: 8px;">
+          <span style="font-size: 12px; color: #999; margin-left: 8px;">Raise Z and move to corner at end</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Z Safe Distance:</span>
           <div class="input-with-unit">
-            <input type="number" id="corner-tip-dia" value="2.0" readonly disabled>
+            <input type="number" id="corner-z-safe" value="10" min="1" step="1">
             <span class="unit-suffix">mm</span>
           </div>
+          <span style="font-size: 12px; color: #999; margin-left: 8px;">Height to raise before moving to corner</span>
         </div>
       </div>
       <div class="section">
         <div class="section-title">Setup Instructions</div>
         <div style="font-size: 13px; line-height: 1.6; color: #ccc;">
-          <p><strong>OUTSIDE Corner</strong> (typical workpiece edge):</p>
+          <p><strong>OUTSIDE Corner Positioning:</strong></p>
           <ul style="margin: 5px 0; padding-left: 20px;">
-            <li><strong>Bottom-Left:</strong> Position probe to the LEFT and BELOW the corner. Probe moves +X (right) and +Y (up)</li>
-            <li><strong>Bottom-Right:</strong> Position probe to the RIGHT and BELOW the corner. Probe moves -X (left) and +Y (up)</li>
-            <li><strong>Top-Left:</strong> Position probe to the LEFT and ABOVE the corner. Probe moves +X (right) and -Y (down)</li>
-            <li><strong>Top-Right:</strong> Position probe to the RIGHT and ABOVE the corner. Probe moves -X (left) and -Y (down)</li>
+            <li><strong>SW (Southwest/Bottom-Left):</strong> Position probe LEFT of vertical wall, BELOW horizontal wall</li>
+            <li><strong>SE (Southeast/Bottom-Right):</strong> Position probe RIGHT of vertical wall, BELOW horizontal wall</li>
+            <li><strong>NW (Northwest/Top-Left):</strong> Position probe LEFT of vertical wall, ABOVE horizontal wall</li>
+            <li><strong>NE (Northeast/Top-Right):</strong> Position probe RIGHT of vertical wall, ABOVE horizontal wall</li>
           </ul>
-          <p style="margin-top: 10px;"><strong>INSIDE Corner</strong> (pocket or cutout):</p>
+          <p style="margin-top: 10px;"><strong>Start Position (A):</strong></p>
           <ul style="margin: 5px 0; padding-left: 20px;">
-            <li>Position probe INSIDE the corner. Probe moves outward to find walls.</li>
+            <li>Set Z at mid-height of workpiece sidewall</li>
+            <li>Position probe at "Start Distance" from BOTH walls (default 5mm)</li>
+            <li>Probe will move in L-shaped pattern to find both walls</li>
           </ul>
-          <p style="margin-top: 10px; color: #ff9800;"><strong>Important:</strong> Manually position Z height before probing. Z will NOT move during probe sequence.</p>
+          <p style="margin-top: 10px; color: #ff9800;"><strong>Sequence:</strong> (1) Probe first wall → (2) Move parallel → (3) Move past first wall → (4) Probe second wall → Done or move to corner</p>
         </div>
       </div>
       <div class="section">
@@ -813,7 +829,6 @@ function applySettingsToUI() {
   document.getElementById('setting-iot-off').value = App.settings.outputs.iotOff;
   document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
   document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
-  document.getElementById('corner-tip-dia').value = App.settings.probe.tipDiameter;
   updatePresetCounts();
 }
 
@@ -864,7 +879,6 @@ function setupSettingsAutoSave() {
       updateSettingsJSON();
       document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
       document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
-      document.getElementById('corner-tip-dia').value = App.settings.probe.tipDiameter;
     });
   });
 }
@@ -1767,9 +1781,13 @@ function loadCornerPreset() {
   const p = App.settings.presets.corner[idx];
   if (!p) return;
   document.getElementById('corner-preset-name').value = p.name || '';
-  document.getElementById('corner-type').value = p.cornerType || 'outside-xminus-yminus';
-  document.getElementById('corner-search-dist').value = p.searchDistance || 30;
+  document.getElementById('corner-location').value = p.cornerLocation || 'SW';
+  document.getElementById('corner-type').value = p.cornerType || 'outside';
+  document.getElementById('corner-start-dist').value = p.startDistance || 5;
+  document.getElementById('corner-travel-dist').value = p.travelDistance || 10;
   document.getElementById('corner-feedrate').value = p.feedrate || 100;
+  document.getElementById('corner-move-to-corner').checked = p.moveToCorner !== false;
+  document.getElementById('corner-z-safe').value = p.zSafe || 10;
 }
 
 function saveCornerPreset() {
@@ -1777,9 +1795,13 @@ function saveCornerPreset() {
   if (!name) { alert('Enter a preset name'); return; }
   const preset = {
     name: name,
+    cornerLocation: document.getElementById('corner-location').value,
     cornerType: document.getElementById('corner-type').value,
-    searchDistance: parseFloat(document.getElementById('corner-search-dist').value) || 30,
-    feedrate: parseInt(document.getElementById('corner-feedrate').value) || 100
+    startDistance: parseFloat(document.getElementById('corner-start-dist').value) || 5,
+    travelDistance: parseFloat(document.getElementById('corner-travel-dist').value) || 10,
+    feedrate: parseInt(document.getElementById('corner-feedrate').value) || 100,
+    moveToCorner: document.getElementById('corner-move-to-corner').checked,
+    zSafe: parseFloat(document.getElementById('corner-z-safe').value) || 10
   };
   const idx = App.settings.presets.corner.findIndex(p => p.name === name);
   if (idx >= 0) App.settings.presets.corner[idx] = preset;
@@ -1826,20 +1848,37 @@ async function runCornerProbe() {
   if (!App.isConnected) { alert('Not connected'); return; }
   if (App.probeInProgress) { alert('Probe already running'); return; }
 
-  const cornerType = document.getElementById('corner-type').value;
-  const searchDist = parseFloat(document.getElementById('corner-search-dist').value);
+  // Get settings from UI
+  const cornerLoc = document.getElementById('corner-location').value; // SW, SE, NW, NE
+  const cornerType = document.getElementById('corner-type').value; // outside or inside
+  const startDist = parseFloat(document.getElementById('corner-start-dist').value);
+  const travelDist = parseFloat(document.getElementById('corner-travel-dist').value);
   const feedrate = parseInt(document.getElementById('corner-feedrate').value) || 100;
   const feedrateSlow = App.settings.probe.feedrateSlow || 50;
   const retract = App.settings.probe.retractDistance || 2;
   const tipDia = App.settings.probe.tipDiameter || 2;
+  const moveToCorner = document.getElementById('corner-move-to-corner').checked;
+  const zSafe = parseFloat(document.getElementById('corner-z-safe').value);
 
-  // Parse corner type: format is "inside/outside-xdir-ydir"
-  const parts = cornerType.split('-');
-  const isInside = parts[0] === 'inside';
-  const xDir = parts[1].includes('plus') ? 1 : -1;  // +1 for +X, -1 for -X
-  const yDir = parts[2].includes('plus') ? 1 : -1;  // +1 for +Y, -1 for -Y
+  // Sanity check
+  if (travelDist < startDist) {
+    alert('Warning: Travel distance should be at least equal to start distance!');
+    return;
+  }
 
-  if (!confirm('Corner Probe\n\nType: ' + cornerType + '\nSearch distance: ' + searchDist + ' mm\n\nProbe tip positioned at correct Z height?\n\nContinue?')) return;
+  // Define probe directions based on corner location (SW, SE, NW, NE)
+  // Format: first probe direction, second probe direction
+  const cornerDefs = {
+    'SW': { probe1: '+X', probe2: '+Y', desc: 'Southwest (Bottom-Left)' },
+    'SE': { probe1: '-X', probe2: '+Y', desc: 'Southeast (Bottom-Right)' },
+    'NW': { probe1: '+X', probe2: '-Y', desc: 'Northwest (Top-Left)' },
+    'NE': { probe1: '-X', probe2: '-Y', desc: 'Northeast (Top-Right)' }
+  };
+
+  const corner = cornerDefs[cornerLoc];
+  if (!corner) { alert('Invalid corner location'); return; }
+
+  if (!confirm(`Corner Probe\n\nLocation: ${corner.desc}\nType: ${cornerType}\nStart Distance: ${startDist}mm\nTravel Distance: ${travelDist}mm\n\nProbe positioned at (A), ${startDist}mm from each wall?\nZ at correct height?\n\nContinue?`)) return;
 
   App.probeInProgress = true;
   probeCommandId = 0;
@@ -1851,62 +1890,66 @@ async function runCornerProbe() {
     statusEl.innerHTML = '<div class="probe-status working">Starting corner probe...</div>';
     await sendAndWait('G91');
 
-    // Probe X edge (vertical surface)
-    statusEl.innerHTML = '<div class="probe-status working">Probing X edge...</div>';
+    // STEP 7: Probe first wall (direction 1)
+    statusEl.innerHTML = '<div class="probe-status working">Probing first wall...</div>';
+    const axis1 = corner.probe1.charAt(1); // 'X' or 'Y'
+    const dir1 = corner.probe1.charAt(0) === '+' ? 1 : -1;
 
-    // For OUTSIDE corner: xDir/yDir point to where corner IS, so probe in OPPOSITE direction
-    // For INSIDE corner: xDir/yDir point to where corner IS, probe in SAME direction (outward)
-    const xProbeDir = isInside ? xDir : -xDir;
-    const yProbeDir = isInside ? yDir : -yDir;
+    const probe1a = await probeAndCapture(axis1, dir1 * startDist, feedrate);
+    await moveRel(axis1, -dir1 * retract);
+    const probe1b = await probeAndCapture(axis1, dir1 * (retract + 3), feedrateSlow);
+    const wall1Pos = (probe1a[axis1.toLowerCase()] + probe1b[axis1.toLowerCase()]) / 2;
+    console.log(`Wall 1 (${axis1}): ${wall1Pos.toFixed(3)}`);
 
-    const xProbe1 = await probeAndCapture('X', xProbeDir * searchDist, feedrate);
-    await moveRel('X', -xProbeDir * retract);
-    const xProbe2 = await probeAndCapture('X', xProbeDir * (retract + 3), feedrateSlow);
-    const xEdge = (xProbe1.x + xProbe2.x) / 2;
+    // Return to position (A)
+    await moveRel(axis1, -dir1 * retract);
 
-    await moveRel('X', -xProbeDir * retract);
+    // STEP 8: Move from (A) to (B) - perpendicular to first wall
+    statusEl.innerHTML = '<div class="probe-status working">Moving to position (B)...</div>';
+    const axis2 = corner.probe2.charAt(1); // 'X' or 'Y'
+    const dir2 = corner.probe2.charAt(0) === '+' ? 1 : -1;
+    await moveRel(axis2, dir2 * travelDist);
 
-    // Return to approximately above corner
-    statusEl.innerHTML = '<div class="probe-status working">Moving to Y probe position...</div>';
-    await sendAndWait('G90');
-    await sendAndWait('G53 G0 X' + xEdge.toFixed(3));
-    await sendAndWait('G91');
+    // STEP 9: Move from (B) to (C) - past first wall by startDist
+    statusEl.innerHTML = '<div class="probe-status working">Moving to position (C)...</div>';
+    await moveRel(axis1, dir1 * (startDist * 2));
 
-    // Probe Y edge (horizontal surface)
-    statusEl.innerHTML = '<div class="probe-status working">Probing Y edge...</div>';
+    // STEP 10: Probe second wall (direction 4)
+    statusEl.innerHTML = '<div class="probe-status working">Probing second wall...</div>';
+    const probe2a = await probeAndCapture(axis2, dir2 * (travelDist + startDist), feedrate);
+    await moveRel(axis2, -dir2 * retract);
+    const probe2b = await probeAndCapture(axis2, dir2 * (retract + 3), feedrateSlow);
+    const wall2Pos = (probe2a[axis2.toLowerCase()] + probe2b[axis2.toLowerCase()]) / 2;
+    console.log(`Wall 2 (${axis2}): ${wall2Pos.toFixed(3)}`);
 
-    const yProbe1 = await probeAndCapture('Y', yProbeDir * searchDist, feedrate);
-    await moveRel('Y', -yProbeDir * retract);
-    const yProbe2 = await probeAndCapture('Y', yProbeDir * (retract + 3), feedrateSlow);
-    const yEdge = (yProbe1.y + yProbe2.y) / 2;
-
-    await moveRel('Y', -yProbeDir * retract);
+    // Return to position (C)
+    await moveRel(axis2, -dir2 * retract);
 
     // Calculate corner position (accounting for probe tip diameter)
-    let cornerX, cornerY;
-    if (isInside) {
-      // Inside corner: edges are closer to probe, add tip radius in direction away from material
-      cornerX = xEdge + xDir * (tipDia / 2);
-      cornerY = yEdge + yDir * (tipDia / 2);
-    } else {
-      // Outside corner: edges are away from probe, subtract tip radius toward material
-      cornerX = xEdge - xDir * (tipDia / 2);
-      cornerY = yEdge - yDir * (tipDia / 2);
+    // For outside corner, the corner is tipDia/2 further in each direction
+    const cornerPos = {};
+    cornerPos[axis1.toLowerCase()] = wall1Pos + dir1 * (tipDia / 2);
+    cornerPos[axis2.toLowerCase()] = wall2Pos + dir2 * (tipDia / 2);
+
+    // STEP 11: Optionally move to corner
+    if (moveToCorner) {
+      statusEl.innerHTML = '<div class="probe-status working">Moving to corner...</div>';
+      await moveRel('Z', zSafe);
+      await sendAndWait('G90');
+      await sendAndWait(`G53 G0 X${cornerPos.x.toFixed(3)} Y${cornerPos.y.toFixed(3)}`);
+      await moveRel('Z', -zSafe);
     }
 
-    // Move to corner
-    statusEl.innerHTML = '<div class="probe-status working">Moving to corner...</div>';
     await sendAndWait('G90');
-    await sendAndWait('G53 G0 X' + cornerX.toFixed(3) + ' Y' + cornerY.toFixed(3));
 
     const result = {
-      cornerX: cornerX,
-      cornerY: cornerY,
-      edge1: xEdge,
-      edge2: yEdge
+      cornerX: cornerPos.x,
+      cornerY: cornerPos.y,
+      edge1: wall1Pos,
+      edge2: wall2Pos
     };
     displayCornerResults(result);
-    statusEl.innerHTML = '<div class="probe-status ready">✓ Complete! At corner position.</div>';
+    statusEl.innerHTML = '<div class="probe-status ready">✓ Complete! Walls measured.</div>';
 
   } catch (err) {
     console.error('Probe error:', err);
@@ -1936,7 +1979,6 @@ function init() {
   // Update tip diameter displays
   document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
   document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
-  document.getElementById('corner-tip-dia').value = App.settings.probe.tipDiameter;
 
   // Initialize probe distance calculations
   updateCylProbeDistance();
