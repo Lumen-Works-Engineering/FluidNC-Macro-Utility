@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.13.1</title>
+<title>FluidNC Probe Utility v1.13.2</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -750,20 +750,12 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
   <div class="section">
     <div class="section-title">Probe Settings</div>
     <div class="form-row">
-      <span class="form-label">Z Safe Height:</span>
-      <div class="input-with-unit">
-        <input type="number" id="hm-z-safe" value="20" step="1" min="1">
-        <span class="unit-suffix">mm</span>
-      </div>
-      <span style="font-size: 12px; color: #999; margin-left: 8px;">Clearance height (positive)</span>
-    </div>
-    <div class="form-row">
       <span class="form-label">Probe Depth:</span>
       <div class="input-with-unit">
         <input type="number" id="hm-probe-depth" value="-10" step="0.5" max="-0.5">
         <span class="unit-suffix">mm</span>
       </div>
-      <span style="font-size: 12px; color: #999; margin-left: 8px;">Max travel (negative)</span>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">How far to probe down from Z=0</span>
     </div>
     <div class="form-row">
       <span class="form-label">Feedrate:</span>
@@ -1025,7 +1017,7 @@ No data yet. Position probe and click "Start Probing".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.13.1';
+const VERSION = '1.13.2';
 const App = {
   ws: null,
   isConnected: false,
@@ -2664,7 +2656,6 @@ function saveHeightmapPreset() {
     name: name,
     slotX: document.getElementById('hm-slot-x').value,
     yPos: document.getElementById('hm-y-pos').value,
-    zSafe: parseFloat(document.getElementById('hm-z-safe').value),
     probeDepth: parseFloat(document.getElementById('hm-probe-depth').value),
     feedrate: parseInt(document.getElementById('hm-feedrate').value),
     timeout: parseInt(document.getElementById('hm-timeout').value)
@@ -2713,7 +2704,6 @@ function loadHeightmapPreset() {
 
   document.getElementById('hm-slot-x').value = preset.slotX;
   document.getElementById('hm-y-pos').value = preset.yPos;
-  document.getElementById('hm-z-safe').value = preset.zSafe;
   document.getElementById('hm-probe-depth').value = preset.probeDepth;
   document.getElementById('hm-feedrate').value = preset.feedrate;
   document.getElementById('hm-timeout').value = preset.timeout;
@@ -2780,15 +2770,9 @@ async function startHeightmapProbe() {
     return;
   }
 
-  const zSafe = parseFloat(document.getElementById('hm-z-safe').value);
   const probeDepth = parseFloat(document.getElementById('hm-probe-depth').value);
   const feedrate = parseInt(document.getElementById('hm-feedrate').value);
   const timeout = parseInt(document.getElementById('hm-timeout').value) * 1000;
-
-  if (zSafe <= 0) {
-    alert('Z Safe Height must be positive');
-    return;
-  }
 
   if (probeDepth >= 0) {
     alert('Probe Depth must be negative');
@@ -2836,15 +2820,8 @@ async function startHeightmapProbe() {
 
         updateHeightmapProgress();
 
-        // Move to position
-        if (j === 0) {
-          // First Y in this slot - raise Z, move XY
-          await sendAndWait(`G0 Z${zSafe.toFixed(3)}`);
-          await sendAndWait(`G0 X${x.toFixed(3)} Y${y.toFixed(3)}`);
-        } else {
-          // Same slot, just move Y
-          await sendAndWait(`G0 Y${y.toFixed(3)}`);
-        }
+        // Move XY to position (staying at Z=0)
+        await sendAndWait(`G0 X${x.toFixed(3)} Y${y.toFixed(3)}`);
 
         // Probe down (use relative mode for probe)
         await sendAndWait('G91');  // Switch to relative
@@ -2868,13 +2845,12 @@ async function startHeightmapProbe() {
           HeightMap.completedPoints++;
         }
 
-        // Retract Z to safe height
-        await sendAndWait(`G0 Z${zSafe.toFixed(3)}`);
+        // Retract to Z=0
+        await sendAndWait('G0 Z0');
       }
     }
 
-    // Return to origin
-    await sendAndWait(`G0 Z${zSafe.toFixed(3)}`);
+    // Return to origin (already at Z=0)
     await sendAndWait('G0 X0 Y0');
 
     if (HeightMap.abortRequested) {
@@ -3092,11 +3068,6 @@ function init() {
 
   // Initialize Side Probe button states
   updateSideProbeButtons();
-
-  // Initialize Height Map default Z safe from settings
-  if (App.settings.defaults && App.settings.defaults.zSafeHeights) {
-    document.getElementById('hm-z-safe').value = App.settings.defaults.zSafeHeights.heightmap;
-  }
 
   // Update tip diameter displays
   document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;

@@ -5,6 +5,32 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.2] - 2024-12-28
+
+### Changed - Height Map Simplified Workflow
+- **Removed Z Safe Height setting** - Not needed for Height Map feature
+  - **Workflow**: User sets Z=0 a few mm above table surface (safe clearance)
+  - **Probing**: All moves happen at Z=0, only probe command moves Z down
+  - **Rationale**: No need to lift Z between points for table-level probing
+- **Updated probing sequence** - Stay at Z=0 throughout entire operation
+  - Move XY to next position (staying at Z=0)
+  - Switch to relative mode (G91)
+  - Probe down (e.g., Z-10mm from current position)
+  - Switch back to absolute mode (G90)
+  - Retract to Z=0
+  - Repeat for all points
+  - **Old sequence**: Lifted to Z=20mm between every point (unnecessary)
+  - **New sequence**: Stay at Z=0, only move Z during probe itself
+- **Removed Z Safe Height from presets** - No longer saved or loaded
+- **Updated probe depth help text** - "How far to probe down from Z=0"
+
+### Technical
+- Removed `zSafe` variable and validation from `startHeightmapProbe()`
+- Removed `hm-z-safe` input field from Height Map tab
+- Removed `zSafe` property from preset save/load functions
+- Removed initialization code that set Z safe from default settings
+- Simplified move logic - no conditional lifting between slots
+
 ## [1.13.1] - 2024-12-28
 
 ### Fixed
