@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.13.3</title>
+<title>FluidNC Probe Utility v1.13.4</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -1017,7 +1017,7 @@ No data yet. Position probe and click "Start Probing".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.13.3';
+const VERSION = '1.13.4';
 const App = {
   ws: null,
   isConnected: false,
@@ -2834,21 +2834,16 @@ async function startHeightmapProbe() {
         await sendAndWait('G90');  // Back to absolute
 
         // Parse probe result
-        console.log('Probe response:', response);
         const match = response.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);
-        console.log('Regex match:', match);
 
         if (match) {
-          const px = parseFloat(match[1]);
-          const py = parseFloat(match[2]);
-          const pz = parseFloat(match[3]);
+          const pz = parseFloat(match[3]);  // Actual Z from probe
           const success = parseInt(match[4]) === 1;
 
-          console.log(`Parsed: X=${px}, Y=${py}, Z=${pz}, success=${success}`);
-          HeightMap.probeData.push({ x: px, y: py, z: pz, success });
+          // Store TARGET coordinates (x, y) with ACTUAL probe Z
+          HeightMap.probeData.push({ x: x, y: y, z: pz, success });
           HeightMap.completedPoints++;
         } else {
-          console.log('Probe failed - no match');
           // Probe failed
           HeightMap.probeData.push({ x: x, y: y, z: null, success: false });
           HeightMap.completedPoints++;
@@ -2949,7 +2944,8 @@ function exportHeightmapCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `heightmap_${Date.now()}.csv`;
+  const timestamp = new Date().toISOString().replace(/:/g, '').split('.')[0];
+  a.download = `heightmap_${timestamp}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -3055,7 +3051,8 @@ ${data.map(d => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `heightmap_report_${Date.now()}.html`;
+  const timestamp = new Date().toISOString().replace(/:/g, '').split('.')[0];
+  a.download = `heightmap_report_${timestamp}.html`;
   a.click();
   URL.revokeObjectURL(url);
 }

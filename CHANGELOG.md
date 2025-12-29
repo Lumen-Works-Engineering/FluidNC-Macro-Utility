@@ -5,6 +5,31 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.4] - 2024-12-28
+
+### Fixed
+- **Height Map exports now use correct coordinates and timestamps**
+  - **Problem**: Stored actual WCS probe coordinates instead of target grid positions
+  - **Impact**: Heatmap showed all "N/A" because coordinates didn't match (0.01mm tolerance failed)
+  - **Example**: User set start at Y+40mm from machine zero, probed at Y=40,90,140... but configured Y=0,50,100...
+  - **Fix**: Store TARGET coordinates (x, y from grid) with ACTUAL probe Z value
+  - **Result**: Heatmap now correctly maps deviations to grid positions
+- **Timestamp format now human-readable**
+  - **Old**: `heightmap_1766968597151.csv` (milliseconds since epoch)
+  - **New**: `heightmap_2024-12-28T183045.csv` (ISO 8601 format without colons)
+  - Applied to both CSV and HTML exports
+- **Workflow clarification**: User sets X0 Y0 Z0 at their chosen start point (not machine zero)
+  - Start point can be anywhere (e.g., Y+40mm from machine zero to avoid table edges)
+  - Probe moves to relative grid positions from that start point
+  - Exports show grid coordinates (0, 50, 100...) not absolute WCS coordinates
+
+### Technical
+- Changed probe data storage from `{ x: px, y: py, z: pz }` to `{ x: x, y: y, z: pz }`
+  - `x, y` = target grid position (HeightMap.slotX[i], HeightMap.yPos[j])
+  - `pz` = actual Z from probe response `[PRB:...]`
+- Timestamp generation: `new Date().toISOString().replace(/:/g, '').split('.')[0]`
+- Heatmap lookup now succeeds with 0.01mm tolerance since coordinates match exactly
+
 ## [1.13.3] - 2024-12-28
 
 ### Fixed
