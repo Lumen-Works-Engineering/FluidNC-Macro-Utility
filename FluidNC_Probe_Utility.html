@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.13.4</title>
+<title>FluidNC Probe Utility v1.13.5</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -1017,7 +1017,7 @@ No data yet. Position probe and click "Start Probing".
 
 <script>
 //#region ===== GLOBAL STATE =====
-const VERSION = '1.13.4';
+const VERSION = '1.13.5';
 const App = {
   ws: null,
   isConnected: false,
@@ -2931,21 +2931,93 @@ function exportHeightmapCSV() {
     return;
   }
 
-  let csv = 'X,Y,Z,Success,Deviation\n';
-  const refZ = HeightMap.probeData.find(d => d.success)?.z || 0;
+  const data = HeightMap.probeData.filter(d => d.success);
+  const refZ = data[0].z;
+  const timestamp = new Date().toISOString();
 
-  HeightMap.probeData.forEach(d => {
-    const dev = d.success ? (d.z - refZ).toFixed(3) : 'N/A';
-    csv += `${d.x.toFixed(3)},${d.y.toFixed(3)},${d.z !== null ? d.z.toFixed(3) : 'N/A'},${d.success},${dev}\n`;
-  });
+  // Build CSV with dual-chart format
+  let csv = '# T-Slot Height Map Raw Data\n';
+  csv += `# Generated: ${timestamp}\n`;
+  csv += `# Probe points: ${data.length}\n\n`;
+
+  // Header row
+  csv += 'X,Y,Z,,Y';
+  HeightMap.slotX.forEach(x => csv += `,${x}`);
+  csv += '\n';
+
+  // Build grid data structures (Y reversed - high to low)
+  const yReversed = [...HeightMap.yPos].reverse();
+
+  let rawIdx = 0;
+  const totalRawPoints = data.length;
+
+  // First section: Raw data on left, Z grid on right
+  for (let yi = 0; yi < yReversed.length; yi++) {
+    const y = yReversed[yi];
+
+    // Left side: raw data row (if available)
+    if (rawIdx < totalRawPoints) {
+      const d = data[rawIdx];
+      csv += `${d.x.toFixed(3)},${d.y.toFixed(3)},${d.z.toFixed(3)}`;
+      rawIdx++;
+    } else {
+      csv += ',,';
+    }
+
+    // Right side: grid Z values for this Y
+    csv += `,  ,${y}`;
+    HeightMap.slotX.forEach(x => {
+      const point = data.find(d => Math.abs(d.x - x) < 0.01 && Math.abs(d.y - y) < 0.01);
+      csv += `,${point ? point.z.toFixed(3) : ''}`;
+    });
+    csv += '\n';
+  }
+
+  // Second section: Continue raw data on left, deviation grid on right
+  csv += `,,,,Deviation`;
+  HeightMap.slotX.forEach(() => csv += ',');
+  csv += '\n';
+
+  for (let yi = 0; yi < yReversed.length; yi++) {
+    const y = yReversed[yi];
+
+    // Left side: raw data row (if available)
+    if (rawIdx < totalRawPoints) {
+      const d = data[rawIdx];
+      csv += `${d.x.toFixed(3)},${d.y.toFixed(3)},${d.z.toFixed(3)}`;
+      rawIdx++;
+    } else {
+      csv += ',,';
+    }
+
+    // Right side: deviation grid for this Y
+    csv += `,  ,${y}`;
+    HeightMap.slotX.forEach(x => {
+      const point = data.find(d => Math.abs(d.x - x) < 0.01 && Math.abs(d.y - y) < 0.01);
+      if (point) {
+        const dev = point.z - refZ;
+        csv += `,${dev >= 0 ? '+' : ''}${dev.toFixed(3)}`;
+      } else {
+        csv += ',';
+      }
+    });
+    csv += '\n';
+  }
+
+  // Continue any remaining raw data
+  while (rawIdx < totalRawPoints) {
+    const d = data[rawIdx];
+    csv += `${d.x.toFixed(3)},${d.y.toFixed(3)},${d.z.toFixed(3)},,,,,,,,\n`;
+    rawIdx++;
+  }
 
   // Download
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
+  const timeStr = timestamp.replace(/:/g, '').split('.')[0];
   a.href = url;
-  const timestamp = new Date().toISOString().replace(/:/g, '').split('.')[0];
-  a.download = `heightmap_${timestamp}.csv`;
+  a.download = `heightmap_${timeStr}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -2964,7 +3036,7 @@ function exportHeightmapHTML() {
   const avgZ = zValues.reduce((a, b) => a + b, 0) / zValues.length;
   const range = maxZ - minZ;
 
-  // Build heatmap table
+  // Build heatmap table (Y reversed - high to low for operator perspective)
   let heatmapHTML = '<table border="1" cellpadding="4" style="border-collapse: collapse; font-size: 12px;">\n';
   heatmapHTML += '<tr><th>Y \\ X</th>';
   HeightMap.slotX.forEach(x => {
@@ -2972,7 +3044,9 @@ function exportHeightmapHTML() {
   });
   heatmapHTML += '</tr>\n';
 
-  HeightMap.yPos.forEach(y => {
+  // Reverse Y order: high Y at top (back of machine), low Y at bottom (front/operator)
+  const yReversed = [...HeightMap.yPos].reverse();
+  yReversed.forEach(y => {
     heatmapHTML += `<tr><th>${y.toFixed(1)}</th>`;
     HeightMap.slotX.forEach(x => {
       const point = data.find(d => Math.abs(d.x - x) < 0.01 && Math.abs(d.y - y) < 0.01);
@@ -2998,7 +3072,8 @@ function exportHeightmapHTML() {
     });
     heatmapHTML += '</tr>\n';
   });
-  heatmapHTML += '</table>';
+  heatmapHTML += '</table>\n';
+  heatmapHTML += '<p><strong>Orientation:</strong> Top = back of machine (high Y), Bottom = front/operator (low Y)</p>';
 
   // Build HTML report
   const html = `<!DOCTYPE html>

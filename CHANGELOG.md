@@ -5,6 +5,30 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.5] - 2024-12-28
+
+### Changed - Height Map Export Format Matches Reference
+- **CSV now uses dual-chart format** - Raw data on left, grid charts on right
+  - **Columns A-C**: Sequential raw probe data (X, Y, Z)
+  - **Columns E-K**: Grid format with Y rows (high to low) and slot X columns
+  - **First grid**: Absolute Z values at each grid position
+  - **Second grid**: Deviation values from reference (with +/- signs)
+  - **Header**: Comments with timestamp and probe point count
+  - **Format**: Matches reference `heightmap_2025-12-13T1924.csv` exactly
+- **Heatmap orientation corrected** - Operator perspective (Y reversed)
+  - **Old**: Y=0 at top, Y=350 at bottom (inverted)
+  - **New**: Y=350 at top (back of machine), Y=0 at bottom (front/operator)
+  - **Visual**: User standing in front of CNC sees heatmap matching table layout
+  - **Label**: "Orientation: Top = back of machine (high Y), Bottom = front/operator (low Y)"
+  - Applied to both CSV grid and HTML heatmap table
+
+### Technical
+- CSV export completely rewritten to match reference format
+- Y positions reversed using `[...HeightMap.yPos].reverse()`
+- Raw data interleaved with grid data in CSV
+- Grid lookup uses 0.01mm tolerance for coordinate matching
+- Deviation formatting with explicit +/- signs: `${dev >= 0 ? '+' : ''}${dev.toFixed(3)}`
+
 ## [1.13.4] - 2024-12-28
 
 ### Fixed
