@@ -5,6 +5,122 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2025-12-30
+
+### Added - Major UI and Feature Improvements
+
+#### 1. Compact UI Globally
+- **Reduced padding and margins throughout application**
+  - Header padding: 8px→6px vertical, 16px→12px horizontal
+  - Tab padding: 16px→12px, nav padding: 10px→8px
+  - Section padding: 16px→12px, margin: 16px→12px
+  - Form row gap: 12px→10px, margin: 8px→6px
+  - Button padding: 6px→4px vertical, 12px→10px horizontal
+- **Smaller fonts for better space efficiency**
+  - Body font: 14px→13px, line-height: 1.4→1.3
+  - Header labels: 12px→11px
+  - Tab buttons: 13px→12px
+  - Status bar: 12px→11px
+  - Section titles: 14px→13px
+  - Form labels: 13px→12px
+  - All inputs/selects: 13px→12px
+  - Buttons: 13px→12px
+- **Compacted UI elements**
+  - Position table padding: 8px→6px, font: 15px→13px
+  - Jog buttons: 50px→45px
+  - Input widths reduced: number 80px→70px
+  - Grid gaps: 16px→12px throughout
+  - Results grid: 6px 16px→5px 12px
+- **Better screen utilization** - Fits more comfortably on 1366x768 and similar displays
+- **No toggle needed** - Always compact, works well on all screen sizes
+
+#### 2. Larger JSON Editor with Full-Screen Mode
+- **Increased textarea height** - 100px→400px for better editing experience
+- **Full-Screen button** - Opens JSON editor in fullscreen overlay
+- **Fullscreen features**:
+  - Dedicated overlay with ESC key to exit
+  - Full-height textarea utilizing entire screen
+  - All editing buttons available (Refresh, Apply, Format)
+  - Sync between normal and fullscreen editors
+  - Focus on textarea when entering fullscreen
+- **Keyboard shortcuts** - ESC key exits fullscreen mode
+- **Improved workflow** - Edit large JSON configs without scrolling
+
+#### 3. Cylinder Repeatability Export & Analysis
+- **CSV Export button** - Export all repeatability test data
+- **Enhanced statistics display** with color-coded tolerance indicators:
+  - **Green**: Within 0.01mm tolerance (PASS)
+  - **Yellow**: 0.01-0.02mm (WARNING)
+  - **Red**: >0.02mm (FAIL)
+- **Statistical analysis**:
+  - Mean X, Y center positions with standard deviation (σ)
+  - Mean Diameter X, Y with standard deviation
+  - Max deviation per axis
+  - Runout calculation (max positional deviation)
+- **Visual data table** with color-coded deviations
+  - Run number, X, Y positions
+  - ΔX, ΔY deviations (color-coded)
+  - Diameter X, Y measurements
+- **CSV Export format**:
+  - Header with metadata (timestamp, preset, expected diameter, runs, tolerance)
+  - Statistics summary (means, std devs, max deviations, runout)
+  - Pass/Fail analysis for each metric
+  - Raw data table with all measurements
+- **Industry-standard tolerance** - 0.01mm used as acceptable threshold
+- **Comprehensive reporting** - All data needed for quality analysis
+
+#### 4. Height Map Single/Double Touch Probing
+- **Checkbox option** - "Double-Touch Probing" in probe settings
+- **Default: Checked** - Double-touch enabled by default for accuracy
+- **Single-touch mode** (unchecked):
+  - One probe per point at specified feedrate
+  - Faster operation (approximately 2x speed)
+  - Good for quick surveys or rough mapping
+- **Double-touch mode** (checked):
+  - Fast probe → retract → slow probe sequence
+  - Uses configured fast feedrate (e.g., 100mm/min)
+  - Retracts by configured distance (e.g., 2mm)
+  - Slow probe at slow feedrate (e.g., 50mm/min)
+  - More accurate final measurement
+  - Standard practice for precision probing
+- **Mode confirmation** - Confirmation dialog shows selected mode
+- **Uses global probe settings** - Slow feedrate and retract distance from Settings tab
+
+### Technical Details
+
+**CSS Changes:**
+- Comprehensive padding/margin reductions across all UI classes
+- Font size reductions maintaining readability
+- Added `#settings-json { min-height: 400px; }`
+- Added fullscreen overlay classes:
+  - `.fullscreen-overlay` - Fixed position overlay
+  - `.fullscreen-header` - Header with title and exit button
+  - `.fullscreen-content` - Flex container for textarea
+- Added `input[type="checkbox"] { cursor: pointer; }` for better UX
+
+**JSON Editor Enhancement:**
+- New fullscreen overlay HTML structure with dedicated textarea
+- Functions: `enterFullscreenJSON()`, `exitFullscreenJSON()`
+- Event listeners for fullscreen buttons and ESC key
+- Auto-sync between main and fullscreen editors
+
+**Cylinder Repeatability Statistics:**
+- Enhanced `updateCylinderHistory()` with comprehensive stats
+- Color indicator function with three threshold levels (0.01mm, 0.02mm)
+- Standard deviation calculations for all metrics
+- Runout calculation as max(maxDevX, maxDevY)
+- New `exportCylinderRepeatability()` function
+- CSV format with three sections: metadata, statistics, raw data
+
+**Height Map Double-Touch:**
+- Checkbox `hm-double-touch` in probe settings section
+- Variables: `feedrateSlow`, `retract` from global settings
+- Conditional logic in probe loop:
+  - If `doubleTouch`: fast probe + retract + slow probe (uses slow probe result)
+  - If not: single probe at normal feedrate
+- Mode indicator in confirmation dialog
+- Both modes use same G91/G90 switching for safety
+
 ## [1.13.5] - 2024-12-28
 
 ### Changed - Height Map Export Format Matches Reference

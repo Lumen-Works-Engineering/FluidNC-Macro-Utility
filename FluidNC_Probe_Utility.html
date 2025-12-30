@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FluidNC Probe Utility v1.13.5</title>
+<title>FluidNC Probe Utility v1.14.0</title>
 <style>
 :root {
   --bg-primary: #1a1a1a;
@@ -26,40 +26,40 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.3;
   min-height: 100vh;
 }
 #app-container { display: flex; flex-direction: column; min-height: 100vh; }
 #header {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
-  padding: 8px 16px;
+  padding: 6px 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
-.header-group { display: flex; align-items: center; gap: 8px; }
-.header-label { color: var(--text-secondary); font-size: 12px; }
+.header-group { display: flex; align-items: center; gap: 6px; }
+.header-label { color: var(--text-secondary); font-size: 11px; }
 #header input[type="text"], #header input[type="number"] {
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 13px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 12px;
 }
-#ip-input { width: 120px; }
-#port-input { width: 60px; }
+#ip-input { width: 110px; }
+#port-input { width: 50px; }
 button {
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 3px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   transition: all 0.15s ease;
 }
 button:hover:not(:disabled) { background: var(--border); }
@@ -68,15 +68,15 @@ button.btn-primary { background: var(--accent); border-color: var(--accent); col
 button.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
 button.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 button.btn-success { background: var(--success); border-color: var(--success); color: #fff; }
-#stop-btn { font-weight: bold; padding: 6px 16px; font-size: 14px; }
-.status-indicator { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-.status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+#stop-btn { font-weight: bold; padding: 5px 12px; font-size: 13px; }
+.status-indicator { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
 .status-dot.connected { background: var(--success); }
 #tab-nav {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   display: flex;
-  padding: 0 16px;
+  padding: 0 12px;
   overflow-x: auto;
 }
 .tab-btn {
@@ -84,22 +84,22 @@ button.btn-success { background: var(--success); border-color: var(--success); c
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--text-secondary);
-  padding: 10px 16px;
-  font-size: 13px;
+  padding: 8px 12px;
+  font-size: 12px;
   border-radius: 0;
 }
 .tab-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-#tab-content { flex: 1; padding: 16px; overflow-y: auto; }
+#tab-content { flex: 1; padding: 12px; overflow-y: auto; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 #status-bar {
   background: var(--bg-secondary);
   border-top: 1px solid var(--border);
-  padding: 6px 16px;
+  padding: 4px 12px;
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-secondary);
 }
 .alarm-status { color: var(--success); }
@@ -107,72 +107,80 @@ button.btn-success { background: var(--success); border-color: var(--success); c
 .section {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 16px;
-  margin-bottom: 16px;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 12px;
 }
-.section-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-.form-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.form-label { color: var(--text-secondary); font-size: 13px; min-width: 140px; }
+.section-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.form-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.form-label { color: var(--text-secondary); font-size: 12px; min-width: 120px; }
 input[type="text"], input[type="number"], select, textarea {
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-primary);
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
-input[type="number"] { width: 80px; }
+input[type="number"] { width: 70px; }
+input[type="checkbox"] { cursor: pointer; }
 textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monospace; }
-.input-with-unit { display: flex; align-items: center; gap: 6px; }
-.unit-suffix { color: var(--text-muted); font-size: 12px; }
+.input-with-unit { display: flex; align-items: center; gap: 5px; }
+.unit-suffix { color: var(--text-muted); font-size: 11px; }
 .text-muted { color: var(--text-muted); }
 .text-success { color: var(--success); }
 .text-danger { color: var(--danger); }
-.mt-1 { margin-top: 8px; }
-.control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.mt-1 { margin-top: 6px; }
+.control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
 .position-table { width: 100%; border-collapse: collapse; }
-.position-table th, .position-table td { padding: 8px 12px; text-align: right; border-bottom: 1px solid var(--border); }
-.position-table th { text-align: left; color: var(--text-secondary); font-weight: normal; font-size: 12px; }
-.position-table .axis-label { font-weight: 600; text-align: left; width: 40px; }
-.position-table .coord-value { font-family: monospace; font-size: 15px; min-width: 100px; }
+.position-table th, .position-table td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+.position-table th { text-align: left; color: var(--text-secondary); font-weight: normal; font-size: 11px; }
+.position-table .axis-label { font-weight: 600; text-align: left; width: 35px; }
+.position-table .coord-value { font-family: monospace; font-size: 13px; min-width: 90px; }
 .position-table .actions { text-align: center; white-space: nowrap; }
-.position-table .actions button { padding: 4px 8px; font-size: 12px; margin: 0 2px; }
-.jog-container { display: flex; gap: 24px; justify-content: center; }
-.jog-xy { display: grid; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 4px; }
-.jog-z { display: grid; grid-template-columns: 50px; grid-template-rows: repeat(2, 50px); gap: 4px; }
-.jog-btn { width: 50px; height: 50px; font-size: 20px; display: flex; align-items: center; justify-content: center; padding: 0; }
+.position-table .actions button { padding: 3px 6px; font-size: 11px; margin: 0 2px; }
+.jog-container { display: flex; gap: 20px; justify-content: center; }
+.jog-xy { display: grid; grid-template-columns: repeat(3, 45px); grid-template-rows: repeat(3, 45px); gap: 3px; }
+.jog-z { display: grid; grid-template-columns: 45px; grid-template-rows: repeat(2, 45px); gap: 3px; }
+.jog-btn { width: 45px; height: 45px; font-size: 18px; display: flex; align-items: center; justify-content: center; padding: 0; }
 .jog-btn:active { background: var(--accent); }
-.jog-placeholder { width: 50px; height: 50px; }
-.jog-label { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-.home-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
-.home-buttons button { min-width: 80px; }
-.output-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-.output-row .output-name { min-width: 80px; color: var(--text-secondary); }
-.output-row button { min-width: 60px; }
+.jog-placeholder { width: 45px; height: 45px; }
+.jog-label { text-align: center; font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+.home-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.home-buttons button { min-width: 70px; }
+.output-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.output-row .output-name { min-width: 70px; color: var(--text-secondary); font-size: 12px; }
+.output-row button { min-width: 55px; }
 .output-row button.active { background: var(--success); border-color: var(--success); }
-.probe-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.probe-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 800px) { .probe-layout { grid-template-columns: 1fr; } }
-.probe-params .form-label { min-width: 130px; }
-.probe-params input[type="number"] { width: 90px; }
-.probe-params input[type="text"] { width: 180px; }
-.preset-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-.preset-row select { min-width: 150px; flex: 1; }
-.preset-row button { padding: 5px 10px; font-size: 12px; }
-.results-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; }
+.probe-params .form-label { min-width: 115px; }
+.probe-params input[type="number"] { width: 80px; }
+.probe-params input[type="text"] { width: 160px; }
+.preset-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.preset-row select { min-width: 140px; flex: 1; }
+.preset-row button { padding: 4px 8px; font-size: 11px; }
+.results-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 12px; }
 .results-grid .label { color: var(--text-secondary); }
 .results-grid .value { font-family: monospace; }
-.results-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.probe-status { padding: 10px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+.results-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.probe-status { padding: 8px; border-radius: 3px; margin: 8px 0; font-size: 12px; }
 .probe-status.ready { background: rgba(76, 175, 80, 0.15); border: 1px solid var(--success); color: var(--success); }
 .probe-status.error { background: rgba(244, 67, 54, 0.15); border: 1px solid var(--danger); color: var(--danger); }
 .probe-status.working { background: rgba(255, 152, 0, 0.15); border: 1px solid var(--warning); color: var(--warning); }
-.placeholder-content { text-align: center; padding: 60px 20px; color: var(--text-muted); }
-.placeholder-content h2 { font-size: 24px; margin-bottom: 12px; color: var(--text-secondary); }
-.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-.json-actions { display: flex; gap: 8px; margin-top: 12px; }
-.instructions { background: var(--bg-primary); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 12px; margin-top: 16px; font-size: 13px; }
+.placeholder-content { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.placeholder-content h2 { font-size: 20px; margin-bottom: 10px; color: var(--text-secondary); }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.json-actions { display: flex; gap: 6px; margin-top: 8px; }
+.instructions { background: var(--bg-primary); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 10px; margin-top: 12px; font-size: 12px; }
+#settings-json { min-height: 400px; }
+.fullscreen-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-primary); z-index: 9999; display: none; flex-direction: column; padding: 12px; }
+.fullscreen-overlay.active { display: flex; }
+.fullscreen-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.fullscreen-header h3 { margin: 0; font-size: 14px; }
+.fullscreen-content { flex: 1; display: flex; flex-direction: column; }
+.fullscreen-content textarea { flex: 1; min-height: 0; }
 </style>
 </head>
 <body>
@@ -389,6 +397,7 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
         </div>
         <div id="cyl-history"><p class="text-muted">Enable repeatability mode to compare runs.</p></div>
         <div id="cyl-history-actions" style="display: none; margin-top: 8px;">
+          <button onclick="exportCylinderRepeatability()" class="btn-primary">Export CSV</button>
           <button onclick="clearCylinderHistory()">Clear History</button>
         </div>
       </div>
@@ -772,6 +781,13 @@ Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
       </div>
       <span style="font-size: 12px; color: #999; margin-left: 8px;">Watchdog per command</span>
     </div>
+    <div class="form-row">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="hm-double-touch" checked>
+        <span class="form-label" style="min-width: auto;">Double-Touch Probing</span>
+      </label>
+      <span style="font-size: 11px; color: #999; margin-left: 8px;">More accurate (fast+slow probe), uncheck for faster single-touch</span>
+    </div>
   </div>
 
   <div class="section">
@@ -965,6 +981,7 @@ No data yet. Position probe and click "Start Probing".
       <button id="refresh-json-btn">Refresh</button>
       <button id="apply-json-btn" class="btn-primary">Apply</button>
       <button id="format-json-btn">Format</button>
+      <button id="fullscreen-json-btn">Full Screen</button>
     </div>
   </div>
   <div class="instructions">
@@ -978,6 +995,22 @@ No data yet. Position probe and click "Start Probing".
   <span>Connection: <span id="footer-connection" class="text-danger">Disconnected</span></span>
   <span>Alarm: <span id="footer-alarm" class="alarm-status">None</span></span>
 </footer>
+</div>
+
+<!-- FULLSCREEN JSON EDITOR OVERLAY -->
+<div id="fullscreen-overlay" class="fullscreen-overlay">
+  <div class="fullscreen-header">
+    <h3>JSON Settings Editor (Full Screen)</h3>
+    <button id="exit-fullscreen-btn" class="btn-danger">Exit Full Screen (Esc)</button>
+  </div>
+  <div class="fullscreen-content">
+    <textarea id="fullscreen-json"></textarea>
+  </div>
+  <div class="json-actions" style="margin-top: 12px;">
+    <button id="fullscreen-refresh-btn">Refresh</button>
+    <button id="fullscreen-apply-btn" class="btn-primary">Apply</button>
+    <button id="fullscreen-format-btn">Format</button>
+  </div>
 </div>
 
 <!-- EMBEDDED SETTINGS (survives Save-As) -->
@@ -1187,6 +1220,21 @@ function onFormatJSON() {
   } catch (e) {
     alert('Invalid JSON: ' + e.message);
   }
+}
+
+function enterFullscreenJSON() {
+  const overlay = document.getElementById('fullscreen-overlay');
+  const mainJSON = document.getElementById('settings-json').value;
+  document.getElementById('fullscreen-json').value = mainJSON;
+  overlay.classList.add('active');
+  document.getElementById('fullscreen-json').focus();
+}
+
+function exitFullscreenJSON() {
+  const overlay = document.getElementById('fullscreen-overlay');
+  const fullscreenJSON = document.getElementById('fullscreen-json').value;
+  document.getElementById('settings-json').value = fullscreenJSON;
+  overlay.classList.remove('active');
 }
 
 function updatePresetCounts() {
@@ -1696,20 +1744,151 @@ function clearCylinderHistory() {
   updateCylinderHistory();
 }
 
+function exportCylinderRepeatability() {
+  if (CylinderProbe.history.length === 0) {
+    alert('No repeatability data to export');
+    return;
+  }
+
+  const tolerance = 0.01;  // 0.01mm acceptable tolerance
+  const timestamp = new Date().toISOString();
+  const presetName = document.getElementById('cyl-preset-name').value || 'Cylinder';
+  const expDia = parseFloat(document.getElementById('cyl-diameter').value) || 0;
+
+  // Calculate statistics
+  const avgX = CylinderProbe.history.reduce((s, r) => s + r.centerX, 0) / CylinderProbe.history.length;
+  const avgY = CylinderProbe.history.reduce((s, r) => s + r.centerY, 0) / CylinderProbe.history.length;
+  const avgDiaX = CylinderProbe.history.reduce((s, r) => s + r.diameterX, 0) / CylinderProbe.history.length;
+  const avgDiaY = CylinderProbe.history.reduce((s, r) => s + r.diameterY, 0) / CylinderProbe.history.length;
+
+  const devsX = CylinderProbe.history.map(r => r.centerX - avgX);
+  const devsY = CylinderProbe.history.map(r => r.centerY - avgY);
+  const devsDiaX = CylinderProbe.history.map(r => r.diameterX - avgDiaX);
+  const devsDiaY = CylinderProbe.history.map(r => r.diameterY - avgDiaY);
+
+  const stdX = Math.sqrt(devsX.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdY = Math.sqrt(devsY.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdDiaX = Math.sqrt(devsDiaX.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdDiaY = Math.sqrt(devsDiaY.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+
+  const maxDevX = Math.max(...devsX.map(Math.abs));
+  const maxDevY = Math.max(...devsY.map(Math.abs));
+  const runout = Math.max(maxDevX, maxDevY);
+
+  // Build CSV
+  let csv = '# Cylinder Probe Repeatability Test\n';
+  csv += `# Generated: ${timestamp}\n`;
+  csv += `# Preset: ${presetName}\n`;
+  csv += `# Expected Diameter: ${expDia.toFixed(3)} mm\n`;
+  csv += `# Number of Runs: ${CylinderProbe.history.length}\n`;
+  csv += `# Tolerance: ${tolerance.toFixed(3)} mm\n\n`;
+
+  csv += '# STATISTICS SUMMARY\n';
+  csv += `Mean Center X,${avgX.toFixed(4)},mm,Std Dev,${stdX.toFixed(4)},mm,Max Dev,${maxDevX.toFixed(4)},mm\n`;
+  csv += `Mean Center Y,${avgY.toFixed(4)},mm,Std Dev,${stdY.toFixed(4)},mm,Max Dev,${maxDevY.toFixed(4)},mm\n`;
+  csv += `Mean Diameter X,${avgDiaX.toFixed(4)},mm,Std Dev,${stdDiaX.toFixed(4)},mm\n`;
+  csv += `Mean Diameter Y,${avgDiaY.toFixed(4)},mm,Std Dev,${stdDiaY.toFixed(4)},mm\n`;
+  csv += `Runout,${runout.toFixed(4)},mm\n\n`;
+
+  csv += '# PASS/FAIL ANALYSIS\n';
+  const passX = stdX <= tolerance && maxDevX <= tolerance * 2;
+  const passY = stdY <= tolerance && maxDevY <= tolerance * 2;
+  const passDiaX = stdDiaX <= tolerance;
+  const passDiaY = stdDiaY <= tolerance;
+  const passRunout = runout <= tolerance * 2;
+  csv += `Center X Repeatability,${passX ? 'PASS' : 'FAIL'},${passX ? '(within tolerance)' : '(exceeds tolerance)'}\n`;
+  csv += `Center Y Repeatability,${passY ? 'PASS' : 'FAIL'},${passY ? '(within tolerance)' : '(exceeds tolerance)'}\n`;
+  csv += `Diameter X Repeatability,${passDiaX ? 'PASS' : 'FAIL'},${passDiaX ? '(within tolerance)' : '(exceeds tolerance)'}\n`;
+  csv += `Diameter Y Repeatability,${passDiaY ? 'PASS' : 'FAIL'},${passDiaY ? '(within tolerance)' : '(exceeds tolerance)'}\n`;
+  csv += `Overall Runout,${passRunout ? 'PASS' : 'FAIL'},${passRunout ? '(within tolerance)' : '(exceeds tolerance)'}\n\n`;
+
+  csv += '# RAW DATA\n';
+  csv += 'Run,Center X (mm),Center Y (mm),Deviation X (mm),Deviation Y (mm),Diameter X (mm),Diameter Y (mm),Avg Diameter (mm)\n';
+  CylinderProbe.history.forEach((r, i) => {
+    const dx = r.centerX - avgX;
+    const dy = r.centerY - avgY;
+    csv += `${i+1},${r.centerX.toFixed(4)},${r.centerY.toFixed(4)},${(dx>=0?'+':'') + dx.toFixed(4)},${(dy>=0?'+':'') + dy.toFixed(4)},${r.diameterX.toFixed(4)},${r.diameterY.toFixed(4)},${r.diameterAvg.toFixed(4)}\n`;
+  });
+
+  // Download
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const timeStr = timestamp.replace(/:/g, '').split('.')[0];
+  a.href = url;
+  a.download = `cylinder_repeatability_${timeStr}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function updateCylinderHistory() {
   const el = document.getElementById('cyl-history');
   if (CylinderProbe.history.length === 0) {
     el.innerHTML = '<p class="text-muted">No runs recorded yet.</p>';
     return;
   }
+
+  const tolerance = 0.01;  // 0.01mm acceptable tolerance
+
+  // Calculate statistics
   const avgX = CylinderProbe.history.reduce((s, r) => s + r.centerX, 0) / CylinderProbe.history.length;
   const avgY = CylinderProbe.history.reduce((s, r) => s + r.centerY, 0) / CylinderProbe.history.length;
-  let html = '<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr style="color:var(--text-secondary);"><th>Run</th><th>X</th><th>Y</th><th>ΔX</th><th>ΔY</th></tr>';
+  const avgDiaX = CylinderProbe.history.reduce((s, r) => s + r.diameterX, 0) / CylinderProbe.history.length;
+  const avgDiaY = CylinderProbe.history.reduce((s, r) => s + r.diameterY, 0) / CylinderProbe.history.length;
+
+  const devsX = CylinderProbe.history.map(r => r.centerX - avgX);
+  const devsY = CylinderProbe.history.map(r => r.centerY - avgY);
+  const devsDiaX = CylinderProbe.history.map(r => r.diameterX - avgDiaX);
+  const devsDiaY = CylinderProbe.history.map(r => r.diameterY - avgDiaY);
+
+  const stdX = Math.sqrt(devsX.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdY = Math.sqrt(devsY.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdDiaX = Math.sqrt(devsDiaX.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdDiaY = Math.sqrt(devsDiaY.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+
+  const maxDevX = Math.max(...devsX.map(Math.abs));
+  const maxDevY = Math.max(...devsY.map(Math.abs));
+  const maxDevDiaX = Math.max(...devsDiaX.map(Math.abs));
+  const maxDevDiaY = Math.max(...devsDiaY.map(Math.abs));
+
+  // Calculate runout (max deviation from center)
+  const runout = Math.max(maxDevX, maxDevY);
+
+  // Color indicator function
+  const colorIndicator = (value) => {
+    const absVal = Math.abs(value);
+    if (absVal <= tolerance) return 'color: var(--success);';
+    if (absVal <= tolerance * 2) return 'color: var(--warning);';
+    return 'color: var(--danger);';
+  };
+
+  // Statistics summary
+  let html = '<div style="margin-bottom:12px;padding:8px;background:var(--bg-tertiary);border-radius:3px;font-size:11px;">';
+  html += '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;">';
+  html += '<span style="color:var(--text-secondary);">Mean X:</span><span>' + avgX.toFixed(3) + ' mm</span><span style="' + colorIndicator(stdX) + '">σ=' + stdX.toFixed(4) + '</span>';
+  html += '<span style="color:var(--text-secondary);">Mean Y:</span><span>' + avgY.toFixed(3) + ' mm</span><span style="' + colorIndicator(stdY) + '">σ=' + stdY.toFixed(4) + '</span>';
+  html += '<span style="color:var(--text-secondary);">Mean Ø X:</span><span>' + avgDiaX.toFixed(3) + ' mm</span><span style="' + colorIndicator(stdDiaX) + '">σ=' + stdDiaX.toFixed(4) + '</span>';
+  html += '<span style="color:var(--text-secondary);">Mean Ø Y:</span><span>' + avgDiaY.toFixed(3) + ' mm</span><span style="' + colorIndicator(stdDiaY) + '">σ=' + stdDiaY.toFixed(4) + '</span>';
+  html += '<span style="color:var(--text-secondary);">Runout:</span><span colspan="2" style="' + colorIndicator(runout) + '">' + runout.toFixed(4) + ' mm</span>';
+  html += '</div></div>';
+
+  // Data table
+  html += '<table style="width:100%;font-size:11px;border-collapse:collapse;">';
+  html += '<tr style="color:var(--text-secondary);"><th>Run</th><th>X</th><th>Y</th><th>ΔX</th><th>ΔY</th><th>Ø X</th><th>Ø Y</th></tr>';
   CylinderProbe.history.forEach((r, i) => {
     const dx = r.centerX - avgX, dy = r.centerY - avgY;
-    html += '<tr><td>' + (i+1) + '</td><td>' + r.centerX.toFixed(3) + '</td><td>' + r.centerY.toFixed(3) + '</td><td>' + (dx>=0?'+':'') + dx.toFixed(3) + '</td><td>' + (dy>=0?'+':'') + dy.toFixed(3) + '</td></tr>';
+    html += '<tr style="border-top:1px solid var(--border);">';
+    html += '<td style="padding:3px;">' + (i+1) + '</td>';
+    html += '<td style="padding:3px;">' + r.centerX.toFixed(3) + '</td>';
+    html += '<td style="padding:3px;">' + r.centerY.toFixed(3) + '</td>';
+    html += '<td style="padding:3px;' + colorIndicator(dx) + '">' + (dx>=0?'+':'') + dx.toFixed(4) + '</td>';
+    html += '<td style="padding:3px;' + colorIndicator(dy) + '">' + (dy>=0?'+':'') + dy.toFixed(4) + '</td>';
+    html += '<td style="padding:3px;">' + r.diameterX.toFixed(3) + '</td>';
+    html += '<td style="padding:3px;">' + r.diameterY.toFixed(3) + '</td>';
+    html += '</tr>';
   });
   html += '</table>';
+
   el.innerHTML = html;
 }
 
@@ -2776,7 +2955,10 @@ async function startHeightmapProbe() {
 
   const probeDepth = parseFloat(document.getElementById('hm-probe-depth').value);
   const feedrate = parseInt(document.getElementById('hm-feedrate').value);
+  const feedrateSlow = App.settings.probe.feedrateSlow || 50;
+  const retract = App.settings.probe.retractDistance || 2;
   const timeout = parseInt(document.getElementById('hm-timeout').value) * 1000;
+  const doubleTouch = document.getElementById('hm-double-touch').checked;
 
   if (probeDepth >= 0) {
     alert('Probe Depth must be negative');
@@ -2784,7 +2966,8 @@ async function startHeightmapProbe() {
   }
 
   HeightMap.totalPoints = HeightMap.slotX.length * HeightMap.yPos.length;
-  if (!confirm(`Start probing ${HeightMap.totalPoints} points (${HeightMap.slotX.length} slots × ${HeightMap.yPos.length} Y positions)?`)) {
+  const mode = doubleTouch ? 'double-touch (accurate)' : 'single-touch (fast)';
+  if (!confirm(`Start probing ${HeightMap.totalPoints} points (${HeightMap.slotX.length} slots × ${HeightMap.yPos.length} Y positions)?\n\nMode: ${mode}`)) {
     return;
   }
 
@@ -2827,24 +3010,52 @@ async function startHeightmapProbe() {
         // Move XY to position (staying at Z=0)
         await sendAndWait(`G0 X${x.toFixed(3)} Y${y.toFixed(3)}`);
 
-        // Probe down (use relative mode for probe)
-        await sendAndWait('G91');  // Switch to relative
-        const probeCmd = `G38.2 Z${probeDepth.toFixed(3)} F${feedrate}`;
-        const response = await sendAndWait(probeCmd, timeout);
-        await sendAndWait('G90');  // Back to absolute
+        let pz = null;
+        let success = false;
 
-        // Parse probe result
-        const match = response.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);
+        if (doubleTouch) {
+          // DOUBLE-TOUCH MODE: Fast probe + retract + slow probe
+          await sendAndWait('G91');  // Switch to relative
 
-        if (match) {
-          const pz = parseFloat(match[3]);  // Actual Z from probe
-          const success = parseInt(match[4]) === 1;
+          // Fast probe
+          const fastCmd = `G38.2 Z${probeDepth.toFixed(3)} F${feedrate}`;
+          const fastResponse = await sendAndWait(fastCmd, timeout);
 
-          // Store TARGET coordinates (x, y) with ACTUAL probe Z
-          HeightMap.probeData.push({ x: x, y: y, z: pz, success });
+          // Retract
+          await sendAndWait(`G0 Z${retract.toFixed(3)}`);
+
+          // Slow probe
+          const slowCmd = `G38.2 Z${(probeDepth + retract).toFixed(3)} F${feedrateSlow}`;
+          const slowResponse = await sendAndWait(slowCmd, timeout);
+
+          await sendAndWait('G90');  // Back to absolute
+
+          // Parse slow probe result (more accurate)
+          const match = slowResponse.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);
+          if (match) {
+            pz = parseFloat(match[3]);
+            success = parseInt(match[4]) === 1;
+          }
+        } else {
+          // SINGLE-TOUCH MODE: Just one probe
+          await sendAndWait('G91');  // Switch to relative
+          const probeCmd = `G38.2 Z${probeDepth.toFixed(3)} F${feedrate}`;
+          const response = await sendAndWait(probeCmd, timeout);
+          await sendAndWait('G90');  // Back to absolute
+
+          // Parse probe result
+          const match = response.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);
+          if (match) {
+            pz = parseFloat(match[3]);
+            success = parseInt(match[4]) === 1;
+          }
+        }
+
+        // Store result
+        if (success) {
+          HeightMap.probeData.push({ x: x, y: y, z: pz, success: true });
           HeightMap.completedPoints++;
         } else {
-          // Probe failed
           HeightMap.probeData.push({ x: x, y: y, z: null, success: false });
           HeightMap.completedPoints++;
         }
@@ -3165,6 +3376,30 @@ function init() {
   document.getElementById('refresh-json-btn').addEventListener('click', onRefreshJSON);
   document.getElementById('apply-json-btn').addEventListener('click', onApplyJSON);
   document.getElementById('format-json-btn').addEventListener('click', onFormatJSON);
+  document.getElementById('fullscreen-json-btn').addEventListener('click', enterFullscreenJSON);
+  document.getElementById('exit-fullscreen-btn').addEventListener('click', exitFullscreenJSON);
+  document.getElementById('fullscreen-refresh-btn').addEventListener('click', () => {
+    document.getElementById('fullscreen-json').value = document.getElementById('settings-json').value;
+  });
+  document.getElementById('fullscreen-apply-btn').addEventListener('click', () => {
+    document.getElementById('settings-json').value = document.getElementById('fullscreen-json').value;
+    onApplyJSON();
+  });
+  document.getElementById('fullscreen-format-btn').addEventListener('click', () => {
+    try {
+      const obj = JSON.parse(document.getElementById('fullscreen-json').value);
+      document.getElementById('fullscreen-json').value = JSON.stringify(obj, null, 2);
+    } catch (e) {
+      alert('Invalid JSON: ' + e.message);
+    }
+  });
+
+  // ESC key to exit fullscreen
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('fullscreen-overlay').classList.contains('active')) {
+      exitFullscreenJSON();
+    }
+  });
   
   // Sync header IP/port with settings
   document.getElementById('ip-input').addEventListener('change', (e) => {
