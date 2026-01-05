@@ -2,7 +2,7 @@
 
 A web-based utility for CNC probe operations with FluidNC controllers. Consolidates multiple probing functions into a single, portable HTML file that connects via WebSocket.
 
-![Version](https://img.shields.io/badge/version-1.9.3-blue)
+![Version](https://img.shields.io/badge/version-1.14.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
@@ -20,9 +20,9 @@ A web-based utility for CNC probe operations with FluidNC controllers. Consolida
 | Control | ✅ Complete | Position display (MCS/WCS), jogging, homing, output toggles |
 | Cylinder Probe | ✅ Complete | External cylinder/boss center finding |
 | Hole Probe | ✅ Complete | Internal hole/bore center finding |
-| Corner Probe | ✅ Complete | Inside/outside corner detection (8 quadrants) |
-| Side Align | 🚧 Planned | Two-point alignment to axis |
-| Height Map | 🚧 Planned | T-slot surface mapping |
+| Corner Probe | ✅ Complete | Outside corner detection (SW/SE/NW/NE) |
+| Side Align | ✅ Complete | Two-point alignment to check workpiece parallel to axis |
+| Height Map | ✅ Complete | T-slot surface mapping |
 | Settings | ✅ Complete | All configuration with JSON editor |
 
 ## Quick Start
@@ -72,16 +72,41 @@ Use for finding the center of internal cylindrical features (holes, bores, pocke
 ### Corner Probe Tab
 Use for finding the XY corner of rectangular workpieces (both inside and outside corners).
 
-1. Select **Corner Type** from dropdown (8 options covering all quadrants)
-   - **Inside corners**: Position probe inside the corner (e.g., inside corner of a pocket)
-   - **Outside corners**: Position probe outside the corner (e.g., corner of workpiece edge)
-2. Set search distance (how far to move while searching for edges)
-3. Set probe depth (how far below surface to probe)
+1. **Manually position Z height** at desired probe level (Z will NOT move during probing)
+2. Select **Corner Type** from dropdown:
+   - **OUTSIDE Corner** (typical workpiece edge) - 4 options:
+     - **Bottom-Left**: Most common - position probe to LEFT and BELOW corner
+     - Bottom-Right, Top-Left, Top-Right
+   - **INSIDE Corner** (pocket/cutout) - 4 options for probing from inside
+3. Set search distance (how far to move while searching for edges)
 4. Click **Test Probe** to verify probe connection
 5. Click **Run Probe** to execute 2-edge double-probe sequence
 6. Use **Set XY0** to set work origin at corner
 
-**Corner Types**: NE (+X+Y), SE (+X-Y), NW (-X+Y), SW (-X-Y) for both inside and outside corners. The tool automatically accounts for probe tip diameter based on corner type.
+**Key Difference from Cylinder/Hole**: No Z movement - you position Z manually before probing. The dropdown labels clearly show which direction the probe will move.
+
+### Side Align Tab
+Use for two-point alignment to check if workpiece edge is parallel to an axis.
+
+1. **Select Probe Direction**: Right (+X), Left (-X), Up (+Y), Down (-Y)
+2. **Manually jog to Point 1** (~5mm from workpiece edge)
+3. Click **Set Point 1 & Probe** - records position and performs double-probe
+4. **Manually jog to Point 2** (move only the axis you're measuring against)
+   - Example: If probing in +X direction, only move Y axis between points
+5. Click **Set Point 2 & Probe** - records position and probes
+6. **View Results**:
+   - Point 1 and Point 2 measurements
+   - Difference between measurements
+   - Angle of misalignment
+   - Correction instructions (rotate clockwise/counter-clockwise)
+7. **Optional Features**:
+   - **Re-Probe Point 2**: After adjusting workpiece, re-probe to verify
+   - **Probe Both Points**: Auto-sequence that moves to saved positions and probes both
+   - **Clear All Points**: Reset to start over
+
+**Tolerance**: Results show ✓ if within 0.01mm, or ⚠ with rotation angle if not parallel.
+
+**Built-in Jog Controls**: Compact XY jog buttons included on tab for convenience.
 
 ### Saving Settings
 Use browser **File → Save As** (Ctrl+S) to save the HTML file with your current settings embedded. Settings include:
@@ -137,7 +162,7 @@ Use `Ctrl+Shift+[` to fold regions in VS Code.
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-Current version: **1.9.3** (2024-12-27)
+Current version: **1.14.0** (2025-12-30)
 
 ## Contributing
 
