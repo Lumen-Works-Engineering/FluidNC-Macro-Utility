@@ -5,17 +5,34 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.9.1] - 2024-12-27
+## [1.9.3] - 2024-12-27
 
 ### Fixed
-- **CRITICAL: Hole Probe movement bug** - Fixed dangerous over-travel when moving between opposite walls
-  - **Root Cause**: Was using `probeDistance` (search parameter) instead of actual measured hole geometry
-  - **Old behavior**: Moved full search distance regardless of hole size, causing crashes
-  - **New behavior**: Uses absolute positioning based on measured wall location
-  - Movement calculation: `eastX - probeDistance` ensures proper positioning on opposite side
+- **CRITICAL: Hole Probe retract bug** - Removed dangerous retract move after West wall probe
+  - After probing West wall, was retracting WEST (`X-2.000`) instead of staying in place
+  - This pushed probe 2mm further into the wall, risking collision with rigid workpieces
+  - **Fix**: Removed unnecessary retract before moving to center (absolute positioning handles it)
+  - West wall sequence now: probe → calculate → move directly to X center
+  - **Impact**: Eliminated collision risk that could break expensive probe
+
+## [1.9.2] - 2024-12-27
+
+### Fixed
+- **CRITICAL: Hole Probe logic errors** - Fixed multiple dangerous bugs in hole probing sequence
+  - **Bug 1 - Over-travel**: Was using `probeDistance` (search parameter) instead of actual measured hole geometry
+    - Now uses absolute positioning: `G53 G0 X{eastX - probeDistance}` to safely move to opposite side
+  - **Bug 2 - Wrong probe direction**: After moving to West/South side, was probing in wrong direction
+    - West wall: Changed from `+X` to `-X` (probe outward/West, not back toward East)
+    - South wall: Changed from `+Y` to `-Y` (probe outward/South, not back toward North)
+    - Also fixed retract direction: `+X` after West probe, `+Y` after South probe
+  - **Cleanup**: Removed unnecessary Z-axis movements (hole probe stays at one Z level)
   - Fixed for both X-axis (East/West) and Y-axis (North/South) movements
-  - Removed unnecessary Z-axis movements (hole probe stays at one Z level)
-  - **Impact**: Prevented potential crashes into workpiece/fixture and probe damage
+  - **Impact**: Prevented crashes into workpiece/fixture and expensive probe damage
+
+## [1.9.1] - 2024-12-27
+
+### Changed
+- Version skipped - incremented to 1.9.2 for micro-versioning clarity
 
 ## [1.9] - 2024-12-27
 
@@ -106,6 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version Numbering
 
-- **Major.Minor** format (e.g., 1.5, 1.6, 2.0)
-- Major version bump for breaking changes or major feature additions
-- Minor version bump for each development iteration
+- **Major.Minor.Patch** format (e.g., 1.9.2, 1.10.0, 2.0.0)
+- **Major**: Breaking changes or major feature additions
+- **Minor**: New features (backward compatible)
+- **Patch**: Bug fixes and micro-iterations during development/testing
