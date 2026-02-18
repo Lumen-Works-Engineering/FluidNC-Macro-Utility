@@ -1,0 +1,4449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FluidNC Probe Utility v1.15.1</title>
+<style>
+:root {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #252525;
+  --bg-tertiary: #2d2d2d;
+  --bg-input: #333;
+  --text-primary: #e0e0e0;
+  --text-secondary: #999;
+  --text-muted: #666;
+  --accent: #4a9eff;
+  --accent-hover: #6bb3ff;
+  --success: #4caf50;
+  --warning: #ff9800;
+  --danger: #f44336;
+  --border: #444;
+  --border-light: #555;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.3;
+  min-height: 100vh;
+}
+#app-container { display: flex; flex-direction: column; min-height: 100vh; }
+#header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.header-group { display: flex; align-items: center; gap: 6px; }
+.header-label { color: var(--text-secondary); font-size: 11px; }
+#header input[type="text"], #header input[type="number"] {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+#ip-input { width: 110px; }
+#port-input { width: 50px; }
+button {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+button:hover:not(:disabled) { background: var(--border); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+button.btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+button.btn-success { background: var(--success); border-color: var(--success); color: #fff; }
+#stop-btn { font-weight: bold; padding: 5px 12px; font-size: 13px; }
+.status-indicator { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+.status-dot.connected { background: var(--success); }
+#tab-nav {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 12px;
+  overflow-x: auto;
+}
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  font-size: 12px;
+  border-radius: 0;
+}
+.tab-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+#tab-content { flex: 1; padding: 12px; overflow-y: auto; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+#status-bar {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  padding: 4px 12px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.alarm-status { color: var(--success); }
+.alarm-status.alarm { color: var(--danger); font-weight: bold; }
+.section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.section-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.form-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.form-label { color: var(--text-secondary); font-size: 12px; min-width: 120px; }
+input[type="text"], input[type="number"], select, textarea {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+input[type="number"] { width: 70px; }
+input[type="checkbox"] { cursor: pointer; }
+textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monospace; }
+.input-with-unit { display: flex; align-items: center; gap: 5px; }
+.unit-suffix { color: var(--text-muted); font-size: 11px; }
+.text-muted { color: var(--text-muted); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.mt-1 { margin-top: 6px; }
+.control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.position-table { width: 100%; border-collapse: collapse; }
+.position-table th, .position-table td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+.position-table th { text-align: left; color: var(--text-secondary); font-weight: normal; font-size: 11px; }
+.position-table .axis-label { font-weight: 600; text-align: left; width: 35px; }
+.position-table .coord-value { font-family: monospace; font-size: 13px; min-width: 90px; }
+.position-table .actions { text-align: center; white-space: nowrap; }
+.position-table .actions button { padding: 3px 6px; font-size: 11px; margin: 0 2px; }
+.jog-container { display: flex; gap: 20px; justify-content: center; }
+.jog-xy { display: grid; grid-template-columns: repeat(3, 45px); grid-template-rows: repeat(3, 45px); gap: 3px; }
+.jog-z { display: grid; grid-template-columns: 45px; grid-template-rows: repeat(2, 45px); gap: 3px; }
+.jog-btn { width: 45px; height: 45px; font-size: 18px; display: flex; align-items: center; justify-content: center; padding: 0; }
+.jog-btn:active { background: var(--accent); }
+.jog-placeholder { width: 45px; height: 45px; }
+.jog-label { text-align: center; font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+.home-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ── Tool indicator badge ── */
+.tool-badge {
+  font-size: 11px; font-weight: bold; padding: 3px 10px;
+  border-radius: 3px; letter-spacing: 0.05em;
+}
+.tool-badge-spindle { background: #1a3a1a; color: var(--success); border: 1px solid var(--success); }
+.tool-badge-laser   { background: #3a1500; color: var(--warning); border: 1px solid var(--warning); }
+
+/* ── Tool selector buttons ── */
+.tool-select-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btn-tool-spindle-active { background: #1a3a1a !important; border-color: var(--success) !important; color: var(--success) !important; font-weight: bold; }
+.btn-tool-laser-active   { background: #3a1500 !important; border-color: var(--warning) !important; color: var(--warning) !important; font-weight: bold; }
+
+/* ── Laser control ── */
+.laser-section-disabled { opacity: 0.4; pointer-events: none; }
+.laser-firing-low  { color: var(--warning); font-weight: bold; font-size: 12px; }
+.laser-firing-high { color: var(--danger);  font-weight: bold; font-size: 12px; }
+#laser-high-btn { user-select: none; -webkit-user-select: none; }
+#laser-high-btn.firing { background: var(--danger) !important; border-color: var(--danger) !important; color: #fff !important; }
+.laser-warn { color: var(--warning); font-size: 11px; font-style: italic; }
+.pwm-hint { color: var(--text-muted); font-size: 11px; margin-left: 4px; }
+
+/* ── WCS / Job Origins table ── */
+.wcs-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wcs-table th, .wcs-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); text-align: right; }
+.wcs-table th { text-align: left; color: var(--text-secondary); font-weight: normal; font-size: 11px; background: var(--bg-tertiary); }
+.wcs-table .wcs-slot  { text-align: left; font-weight: bold; font-family: monospace; min-width: 60px; }
+.wcs-table .wcs-note  { text-align: left; color: var(--text-muted); font-size: 11px; }
+.wcs-table .wcs-acts  { text-align: center; white-space: nowrap; }
+.wcs-table .wcs-acts button { padding: 2px 7px; font-size: 11px; margin: 0 1px; }
+.wcs-edit-panel { background: var(--bg-tertiary); border: 1px solid var(--accent); border-radius: 4px; padding: 10px; margin-top: 8px; display: none; }
+.wcs-edit-panel.visible { display: block; }
+
+/* ── Position log table ── */
+.poslog-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.poslog-table th, .poslog-table td { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: right; }
+.poslog-table th { text-align: left; color: var(--text-secondary); font-weight: normal; font-size: 11px; background: var(--bg-tertiary); }
+.poslog-table .pl-check { text-align: center; width: 28px; }
+.poslog-table .pl-label { text-align: left; }
+.poslog-table .pl-label input { background: transparent; border: none; color: var(--text-primary); font-size: 12px; width: 100px; }
+.poslog-table .pl-label input:focus { background: var(--bg-input); border: 1px solid var(--accent); border-radius: 2px; }
+.poslog-table .pl-acts { text-align: center; white-space: nowrap; }
+.poslog-table .pl-acts button { padding: 2px 6px; font-size: 11px; margin: 0 1px; }
+.diff-out { font-family: monospace; font-size: 12px; background: var(--bg-primary); padding: 6px 10px;
+  border: 1px solid var(--border); border-radius: 3px; color: var(--accent); white-space: pre; margin-top: 8px; }
+
+/* ── Zero XY undo ── */
+.zero-undo-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 12px; }
+.zero-undo-row .undo-info { color: var(--text-muted); font-family: monospace; }
+.zero-undo-row .undo-info span { color: var(--warning); }
+
+/* ── MCS Move inputs ── */
+.mcs-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mcs-row label { display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; }
+.mcs-row input[type="number"] { width: 88px; }
+
+/* ── Return Points ── */
+.return-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.return-group { border: 1px solid var(--border); border-radius: 4px; padding: 8px; }
+.return-group-title { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; }
+.return-group .btn-row { display: flex; gap: 6px; }
+
+/* ── Tool Offset ── */
+.offset-stored { font-family: monospace; font-size: 13px; color: var(--accent); padding: 4px 0; }
+.offset-meas-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+.offset-meas-table th, .offset-meas-table td { padding: 4px 8px; border-bottom: 1px solid var(--border); text-align: right; }
+.offset-meas-table th { text-align: left; color: var(--text-secondary); font-weight: normal; background: var(--bg-tertiary); }
+.offset-meas-table .om-acts button { padding: 2px 6px; font-size: 11px; }
+.offset-step { background: var(--bg-tertiary); border-left: 3px solid var(--accent); padding: 8px 10px; margin: 6px 0; border-radius: 0 4px 4px 0; font-size: 12px; }
+.offset-step-done { border-left-color: var(--success); }
+.offset-step-title { font-weight: bold; margin-bottom: 3px; }
+.offset-calc-result { font-family: monospace; color: var(--warning); font-size: 13px; padding: 4px 0; }
+
+/* ── Coordinate Reference ── */
+.coord-ref { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; padding: 12px 14px; font-size: 12px; line-height: 1.7; }
+.coord-ref h4 { font-size: 12px; color: var(--accent); margin: 10px 0 4px 0; }
+.coord-ref h4:first-child { margin-top: 0; }
+.coord-ref .gcmd { font-family: monospace; color: var(--warning); font-size: 11px; }
+.coord-ref .rule { background: var(--bg-secondary); border-left: 3px solid var(--success); padding: 6px 10px; margin-top: 8px; border-radius: 0 3px 3px 0; font-size: 12px; }
+.home-buttons button { min-width: 70px; }
+.output-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.output-row .output-name { min-width: 70px; color: var(--text-secondary); font-size: 12px; }
+.output-row button { min-width: 55px; }
+.output-row button.active { background: var(--success); border-color: var(--success); }
+.probe-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 800px) { .probe-layout { grid-template-columns: 1fr; } }
+.probe-params .form-label { min-width: 115px; }
+.probe-params input[type="number"] { width: 80px; }
+.probe-params input[type="text"] { width: 160px; }
+.preset-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.preset-row select { min-width: 140px; flex: 1; }
+.preset-row button { padding: 4px 8px; font-size: 11px; }
+.results-grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 12px; }
+.results-grid .label { color: var(--text-secondary); }
+.results-grid .value { font-family: monospace; }
+.results-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.probe-status { padding: 8px; border-radius: 3px; margin: 8px 0; font-size: 12px; }
+.probe-status.ready { background: rgba(76, 175, 80, 0.15); border: 1px solid var(--success); color: var(--success); }
+.probe-status.error { background: rgba(244, 67, 54, 0.15); border: 1px solid var(--danger); color: var(--danger); }
+.probe-status.working { background: rgba(255, 152, 0, 0.15); border: 1px solid var(--warning); color: var(--warning); }
+.placeholder-content { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.placeholder-content h2 { font-size: 20px; margin-bottom: 10px; color: var(--text-secondary); }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.json-actions { display: flex; gap: 6px; margin-top: 8px; }
+.instructions { background: var(--bg-primary); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 10px; margin-top: 12px; font-size: 12px; }
+#settings-json { min-height: 400px; }
+.fullscreen-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-primary); z-index: 9999; display: none; flex-direction: column; padding: 12px; }
+.fullscreen-overlay.active { display: flex; }
+.fullscreen-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.fullscreen-header h3 { margin: 0; font-size: 14px; }
+.fullscreen-content { flex: 1; display: flex; flex-direction: column; }
+.fullscreen-content textarea { flex: 1; min-height: 0; }
+</style>
+</head>
+<body>
+<div id="app-container">
+<header id="header">
+  <div class="header-group">
+    <span class="header-label">IP:</span>
+    <input type="text" id="ip-input" value="fluidnc.local">
+  </div>
+  <div class="header-group">
+    <span class="header-label">Port:</span>
+    <input type="number" id="port-input" value="80">
+  </div>
+  <button id="connect-btn" class="btn-primary">Connect</button>
+  <button id="disconnect-btn" disabled>Disconnect</button>
+  <div class="status-indicator">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Disconnected</span>
+  </div>
+  <div style="flex: 1;"></div>
+  <span id="header-tool-badge" class="tool-badge tool-badge-spindle" title="Active tool — use Tool Selector in Control tab to change">SPINDLE</span>
+  <button id="stop-btn" class="btn-danger">⚠ STOP</button>
+</header>
+
+<nav id="tab-nav">
+  <button class="tab-btn active" data-tab="control">Control</button>
+  <button class="tab-btn" data-tab="cylinder">Cylinder Probe</button>
+  <button class="tab-btn" data-tab="hole">Hole Probe</button>
+  <button class="tab-btn" data-tab="corner">Corner Probe</button>
+  <button class="tab-btn" data-tab="side-align">Side Align</button>
+  <button class="tab-btn" data-tab="heightmap">Height Map</button>
+  <button class="tab-btn" data-tab="settings">Settings</button>
+</nav>
+
+<main id="tab-content">
+
+<!-- CONTROL TAB -->
+<div class="tab-panel active" id="panel-control">
+  <div class="control-grid">
+
+    <!-- ── Position ── -->
+    <div class="section">
+      <div class="section-title">
+        Position
+        <span class="text-muted" style="font-weight:normal;font-size:11px;margin-left:6px;">Machine Pos (absolute) / Job Origin offset</span>
+      </div>
+      <table class="position-table">
+        <thead><tr><th></th><th>Machine Pos</th><th>Job Pos (G54)</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="axis-label">X</td>
+            <td class="coord-value" id="pos-mcs-x">0.000</td>
+            <td class="coord-value" id="pos-wcs-x">0.000</td>
+            <td class="actions">
+              <button onclick="zeroAxis('X')" title="Set X job origin here (G10 L20 P1 X0)">Zero X</button>
+              <button onclick="gotoZero('X')" title="Go to X job origin (G0 X0)">Go 0</button>
+            </td>
+          </tr>
+          <tr>
+            <td class="axis-label">Y</td>
+            <td class="coord-value" id="pos-mcs-y">0.000</td>
+            <td class="coord-value" id="pos-wcs-y">0.000</td>
+            <td class="actions">
+              <button onclick="zeroAxis('Y')" title="Set Y job origin here (G10 L20 P1 Y0)">Zero Y</button>
+              <button onclick="gotoZero('Y')" title="Go to Y job origin (G0 Y0)">Go 0</button>
+            </td>
+          </tr>
+          <tr>
+            <td class="axis-label">Z</td>
+            <td class="coord-value" id="pos-mcs-z">0.000</td>
+            <td class="coord-value" id="pos-wcs-z">0.000</td>
+            <td class="actions">
+              <button onclick="zeroAxis('Z')" title="Set Z job origin here (G10 L20 P1 Z0)">Zero Z</button>
+              <button onclick="gotoZero('Z')" title="Go to Z job origin (G0 Z0)">Go 0</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button onclick="zeroAxisXYWithUndo()" class="btn-primary" title="Set XY job origin to current position (G10 L20 P1 X0 Y0)">Set Job Origin XY Here</button>
+        <button onclick="gotoZero('XY')" title="Go to XY job origin (G0 X0 Y0)">Go to Job Origin XY</button>
+        <button onclick="gotoZero('Z')"  title="Go to Z job origin (G0 Z0)">Go Z 0</button>
+        <button onclick="refreshPosition()" style="margin-left:auto;" title="Request position update (?)">↻ Refresh</button>
+      </div>
+      <div class="zero-undo-row" id="zero-undo-row" style="display:none;">
+        <span class="undo-info">Last job origin before Zero XY: <span id="zero-undo-label"></span></span>
+        <button onclick="undoZeroXY()" title="Restore previous G54 XY offset">↩ Undo Zero XY</button>
+      </div>
+    </div>
+
+    <!-- ── Home ── -->
+    <div class="section">
+      <div class="section-title">Home <span class="text-muted" style="font-weight:normal;font-size:11px;">— always home before starting work</span></div>
+      <div class="home-buttons">
+        <button onclick="homeAxis('all')" class="btn-primary">Home All ($H)</button>
+        <button onclick="homeAxis('X')">Home X</button>
+        <button onclick="homeAxis('Y')">Home Y</button>
+        <button onclick="homeAxis('Z')">Home Z</button>
+      </div>
+    </div>
+
+    <!-- ── Jog ── -->
+    <div class="section">
+      <div class="section-title">Jog</div>
+      <div class="jog-container">
+        <div>
+          <div class="jog-xy">
+            <div class="jog-placeholder"></div>
+            <button class="jog-btn" data-axis="Y" data-dir="+">▲</button>
+            <div class="jog-placeholder"></div>
+            <button class="jog-btn" data-axis="X" data-dir="-">◀</button>
+            <div class="jog-placeholder"></div>
+            <button class="jog-btn" data-axis="X" data-dir="+">▶</button>
+            <div class="jog-placeholder"></div>
+            <button class="jog-btn" data-axis="Y" data-dir="-">▼</button>
+            <div class="jog-placeholder"></div>
+          </div>
+          <div class="jog-label">XY</div>
+        </div>
+        <div>
+          <div class="jog-z">
+            <button class="jog-btn" data-axis="Z" data-dir="+">▲</button>
+            <button class="jog-btn" data-axis="Z" data-dir="-">▼</button>
+          </div>
+          <div class="jog-label">Z</div>
+        </div>
+      </div>
+      <p class="text-muted mt-1" style="text-align:center;font-size:11px;">Click and hold to jog</p>
+    </div>
+
+    <!-- ── Outputs ── -->
+    <div class="section">
+      <div class="section-title">Outputs</div>
+      <div class="output-row">
+        <span class="output-name">Mist</span>
+        <button id="mist-btn" onclick="toggleOutput('mist')">OFF</button>
+      </div>
+      <div class="output-row">
+        <span class="output-name">Vacuum</span>
+        <button id="vacuum-btn" onclick="toggleOutput('vacuum')">OFF</button>
+      </div>
+      <div class="output-row">
+        <span class="output-name">IoT PDU</span>
+        <button id="iot-btn" onclick="toggleOutput('iot')">OFF</button>
+      </div>
+    </div>
+
+  </div><!-- end control-grid -->
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ── Move to Machine Position ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" style="margin-top:12px;">
+    <div class="section-title">Move to Machine Position
+      <span class="text-muted" style="font-weight:normal;font-size:11px;margin-left:6px;">(G53 — absolute machine coordinates, requires homing first)</span>
+    </div>
+    <div class="mcs-row">
+      <label><input type="checkbox" id="mcs-x-en"> X:</label>
+      <input type="number" id="mcs-x-val" step="0.001" placeholder="0.000">
+      <label><input type="checkbox" id="mcs-y-en"> Y:</label>
+      <input type="number" id="mcs-y-val" step="0.001" placeholder="0.000">
+      <label><input type="checkbox" id="mcs-z-en"> Z:</label>
+      <input type="number" id="mcs-z-val" step="0.001" placeholder="0.000">
+      <button onclick="moveToMCS()" class="btn-primary">Go</button>
+      <button onclick="fillMCSFromCurrent()" title="Populate fields with current machine position">← From Current</button>
+    </div>
+    <p class="text-muted mt-1" style="font-size:11px;">Check the axes you want to move. ⚠ Make sure Z is clear before moving XY to a new position.</p>
+  </div>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ── Position Log ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" style="margin-top:12px;">
+    <div class="section-title">Position Log
+      <span class="text-muted" style="font-weight:normal;font-size:11px;margin-left:8px;">Session only — clears on page refresh. Useful for measuring tool offsets.</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
+      <button onclick="recordPosition()" class="btn-primary">● Record Current Position</button>
+      <button onclick="diffSelectedPositions()" id="pos-diff-btn">Diff 2 Selected</button>
+      <button onclick="clearPositionLog()" style="margin-left:auto;">Clear Log</button>
+    </div>
+    <div id="pos-log-wrap">
+      <p class="text-muted" style="font-size:12px;">No positions recorded yet.</p>
+    </div>
+    <div id="pos-log-diff" class="diff-out" style="display:none;"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ── Job Origins Manager (G54–G59) ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" style="margin-top:12px;">
+    <div class="section-title">Saved Job Origins (G54–G59)
+      <button onclick="refreshWCSTable()" style="float:right;padding:2px 8px;font-size:11px;" title="Send $# to read all offsets from controller">↻ Refresh from Controller</button>
+    </div>
+    <p class="text-muted" style="font-size:11px;margin-bottom:8px;">
+      Each slot stores a machine position that becomes XYZ 0,0,0 for jobs using that slot.
+      <strong>G54 is the default</strong> used by almost all G-code files.
+      Stored in controller EEPROM — survive power off.
+    </p>
+    <table class="wcs-table">
+      <thead>
+        <tr>
+          <th style="text-align:left;">Slot</th>
+          <th style="text-align:left;">Purpose / Note</th>
+          <th>Mach X</th><th>Mach Y</th><th>Mach Z</th>
+          <th style="text-align:center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="wcs-tbody">
+        <tr><td colspan="6" class="text-muted" style="text-align:center;padding:10px;">Connect and click ↻ Refresh to load offsets.</td></tr>
+      </tbody>
+    </table>
+    <div class="wcs-edit-panel" id="wcs-edit-panel">
+      <div style="font-size:12px;margin-bottom:8px;">
+        Set <strong id="wcs-edit-label">G54</strong> job origin to this machine position
+        <span class="text-muted" style="font-size:11px;">(the machine coordinates that map to job XYZ 0,0,0)</span>
+      </div>
+      <div class="mcs-row">
+        <label style="min-width:20px;">X:</label>
+        <input type="number" id="wcs-edit-x" step="0.001" style="width:90px;">
+        <label style="min-width:20px;">Y:</label>
+        <input type="number" id="wcs-edit-y" step="0.001" style="width:90px;">
+        <label style="min-width:20px;">Z:</label>
+        <input type="number" id="wcs-edit-z" step="0.001" style="width:90px;">
+        <button onclick="applyWCSEdit()" class="btn-primary">Apply</button>
+        <button onclick="cancelWCSEdit()">Cancel</button>
+      </div>
+      <p class="text-muted" style="font-size:11px;margin-top:6px;">Sends: G10 L2 P{n} X{val} Y{val} Z{val} — writes directly to controller EEPROM.</p>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center;">
+      <button onclick="clearG54()" title="Reset G54 to zero. Required before using LightBurn in Absolute Coords mode.">
+        Reset Job Origin G54 to Zero
+      </button>
+      <span class="text-muted" style="font-size:11px;">Sends G10 L2 P1 X0 Y0 Z0 — after homing, job position will equal machine position. Use before LightBurn.</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ── Return Points (G28 / G30) ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" style="margin-top:12px;">
+    <div class="section-title">Return Points
+      <span class="text-muted" style="font-weight:normal;font-size:11px;margin-left:6px;">Stored in machine coordinates — survive power off, recall with one button after homing</span>
+    </div>
+    <div class="return-grid">
+      <div class="return-group">
+        <div class="return-group-title">Return Point 1 (G28) — e.g. PCB job origin</div>
+        <div class="btn-row">
+          <button onclick="saveReturnPoint(1)" class="btn-primary" title="Save current machine position as Return Point 1 (G28.1)">Save Here</button>
+          <button onclick="gotoReturnPoint(1)" title="Go to Return Point 1 (G28)">Go There</button>
+        </div>
+      </div>
+      <div class="return-group">
+        <div class="return-group-title">Return Point 2 (G30) — e.g. tool change position</div>
+        <div class="btn-row">
+          <button onclick="saveReturnPoint(2)" class="btn-primary" title="Save current machine position as Return Point 2 (G30.1)">Save Here</button>
+          <button onclick="gotoReturnPoint(2)" title="Go to Return Point 2 (G30)">Go There</button>
+        </div>
+      </div>
+    </div>
+    <p class="text-muted mt-1" style="font-size:11px;">
+      <strong>Workflow:</strong> Jog to your PCB corner, zero job XY, then click Save Here (Return Point 1).
+      Next session: Home → Go There → job coordinates are already correct, no re-zeroing needed.
+    </p>
+  </div>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ── Tool Offset (Spindle → Laser) ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" style="margin-top:12px;">
+    <div class="section-title">Tool Offset — Spindle to Laser</div>
+
+    <!-- Stored offset display -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;flex-wrap:wrap;">
+      <div>
+        <span class="text-muted" style="font-size:11px;">Stored offset (laser relative to spindle):</span><br>
+        <span class="offset-stored" id="offset-display">Not measured yet</span>
+      </div>
+      <button onclick="moveToLaserZero()" id="laser-zero-btn" class="btn-primary"
+        title="Move laser to where spindle was zeroed. Then set job origin here manually.">
+        Move Laser to Spindle Zero
+      </button>
+      <span class="text-muted" style="font-size:11px;">Sends: G0 X{offsetX} Y{offsetY} — then zero job origin manually as usual.</span>
+    </div>
+
+    <!-- Measure workflow -->
+    <details>
+      <summary style="cursor:pointer;font-size:12px;color:var(--accent);margin-bottom:8px;">▶ Measure / Update Offset (expand)</summary>
+
+      <div class="offset-step" id="offset-step1">
+        <div class="offset-step-title">Step 1 — Position spindle tip at reference mark on workpiece</div>
+        <button onclick="recordSpindlePos()" class="btn-primary">Record Spindle Position</button>
+        <span id="offset-spindle-recorded" style="margin-left:10px;font-size:12px;"></span>
+      </div>
+
+      <div class="offset-step" id="offset-step2">
+        <div class="offset-step-title">Step 2 — Switch to laser, align beam to same mark, then record</div>
+        <button onclick="recordLaserPos()">Record Laser Position</button>
+        <span id="offset-laser-recorded" style="margin-left:10px;font-size:12px;"></span>
+      </div>
+
+      <div id="offset-calc-row" style="display:none;margin:8px 0;">
+        <span class="text-muted" style="font-size:12px;">Calculated offset: </span>
+        <span class="offset-calc-result" id="offset-calc-display"></span>
+        <button onclick="addOffsetMeasurement()" class="btn-primary" style="margin-left:12px;">Add to Measurements</button>
+      </div>
+
+      <!-- Measurements list -->
+      <div id="offset-meas-wrap" style="margin-top:8px;display:none;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+          <span style="font-size:12px;">Measurements:</span>
+          <span class="offset-stored" id="offset-avg-display" style="font-size:12px;"></span>
+          <button onclick="saveAverageOffset()" class="btn-success" style="margin-left:auto;" title="Save the average of all measurements as the stored offset">Save Average as Offset</button>
+          <button onclick="clearOffsetMeasurements()">Clear All</button>
+        </div>
+        <table class="offset-meas-table" id="offset-meas-table">
+          <thead><tr><th>#</th><th>ΔX mm</th><th>ΔY mm</th><th></th></tr></thead>
+          <tbody id="offset-meas-tbody"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ── Active Tool ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" style="margin-top:12px;">
+    <div class="section-title">Active Tool</div>
+    <div class="tool-select-row">
+      <button id="tool-spindle-btn" onclick="selectTool(0)" class="btn-tool-spindle-active">🔩 Spindle (T0)</button>
+      <button id="tool-laser-btn"   onclick="selectTool(1)">⚡ Laser (T1)</button>
+      <span style="font-size:12px;color:var(--text-secondary);">
+        Active: <span id="tool-active-label" style="font-weight:bold;color:var(--success);">Spindle (T0)</span>
+      </span>
+      <span class="text-muted" style="font-size:11px;margin-left:auto;">Sends M6 T0 or M6 T1</span>
+    </div>
+    <p class="text-muted mt-1" style="font-size:11px;">
+      ⚠ M3 (laser fire) will not work until the laser is selected with M6 T1. Always switch tools here before firing.
+    </p>
+  </div>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ── Laser Control ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" id="laser-section" style="margin-top:12px;">
+    <div class="section-title">
+      Laser Control
+      <span id="laser-disabled-notice" class="text-muted" style="font-weight:normal;font-size:11px;margin-left:8px;">⚠ Switch to Laser (T1) above to enable</span>
+    </div>
+    <div id="laser-inner">
+      <!-- Low power -->
+      <div class="form-row" style="margin-bottom:10px;align-items:center;">
+        <span class="form-label">Low Power (align):</span>
+        <input type="number" id="laser-low-pct" min="1" max="10" value="7" step="1" style="width:52px;" title="1–10% max">
+        <span class="unit-suffix">%</span>
+        <span class="pwm-hint" id="laser-low-pwm-hint">= S18</span>
+        <button id="laser-low-btn" onclick="toggleLaserLow()" style="margin-left:8px;">Fire Low Power (toggle)</button>
+        <span id="laser-low-ind" class="laser-firing-low" style="display:none;margin-left:8px;">● FIRING</span>
+      </div>
+      <!-- High power -->
+      <div class="form-row" style="margin-bottom:8px;align-items:center;">
+        <span class="form-label">High Power (mark):</span>
+        <input type="number" id="laser-high-pct" min="1" max="50" value="30" step="1" style="width:52px;" title="Max set in Settings">
+        <span class="unit-suffix">%</span>
+        <span class="pwm-hint" id="laser-high-pwm-hint">= S77</span>
+        <button id="laser-high-btn" style="margin-left:8px;">Hold to Fire ▶</button>
+        <span id="laser-high-ind" class="laser-firing-high" style="display:none;margin-left:8px;">⚠ HIGH POWER FIRING</span>
+      </div>
+      <p class="laser-warn">⚠ Wear laser safety glasses (450nm OD4+). Ensure beam path is clear. High power fires ONLY while button is held down.</p>
+      <p class="text-muted mt-1" style="font-size:11px;">Fire command: G90 M3 S{n} G1 F1  |  Stop: M5  |  Power scale 0–255 PWM</p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ── Clear Alarm ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" style="margin-top:12px;">
+    <div class="section-title">Alarm</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button onclick="clearAlarm()" class="btn-danger">Unlock / Clear Alarm ($X)</button>
+      <span class="text-muted" style="font-size:12px;">Use after an E-stop, limit switch trip, or soft reset. Verify the machine is safe before unlocking.</span>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════ -->
+  <!-- ── Coordinate System Reference ── -->
+  <!-- ════════════════════════════════════════════════ -->
+  <div class="section" style="margin-top:12px;">
+    <div class="section-title">Coordinate System Reference</div>
+    <div class="coord-ref">
+
+      <h4>Machine Position <span class="gcmd">(G53 / MCS)</span></h4>
+      The absolute truth. 0,0,0 is always at your homing switches. Never changes unless you move a switch or change machine geometry.
+      Every command that uses <span class="gcmd">G53</span> moves to these absolute coordinates regardless of any job origin settings.
+      The machine position display at the top of this tab always shows this.
+
+      <h4>Job Origin — G54 <span class="gcmd">(default)</span> through G59</h4>
+      When you jog to the corner of your workpiece and click "Set Job Origin XY Here", you are telling the controller
+      "wherever the machine is right now is XYZ 0,0,0 for this job." That offset is stored in <span class="gcmd">G54</span> and survives power-off.
+      Your G-code files use this origin. Six slots are available (G54–G59) for different fixtures or tools.
+      <strong>Almost all G-code files expect G54</strong> — leave the others for special purposes like a secondary fixture or laser offset.
+
+      <h4>Return Points <span class="gcmd">(G28 / G30)</span></h4>
+      Two parking spots stored in machine coordinates. Save a position with "Save Here" and recall it with "Go There" after any
+      homing cycle. Perfect for returning to your PCB work origin across sessions without re-zeroing.
+      Stored in controller EEPROM — survive power-off and controller restarts.
+
+      <h4>Tool Offset</h4>
+      Because the laser is physically mounted offset from the spindle, the machine must move by the measured offset amount
+      to put the laser beam where the spindle was. This utility stores that offset and the "Move Laser to Spindle Zero" button
+      applies it automatically.
+
+      <h4>G10 — Setting offsets by command</h4>
+      <span class="gcmd">G10 L20 P1 X0 Y0</span> — "Make my current position become job origin 0,0 for G54."
+      This is what "Set Job Origin XY Here" sends. <br>
+      <span class="gcmd">G10 L2 P1 X-150 Y-80</span> — "Set the G54 origin to machine position -150,-80 explicitly."
+      This is what "Set Values" in the Job Origins table sends.
+
+      <div class="rule">
+        <strong>The golden rule:</strong> Home the machine first. After homing, machine position is always accurate.
+        Everything else — job origins, return points, tool offsets — depends on a successful home cycle.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- CYLINDER PROBE TAB -->
+<div class="tab-panel" id="panel-cylinder">
+  <div class="probe-layout">
+    <div>
+      <div class="section">
+        <div class="section-title">Presets</div>
+        <div class="preset-row">
+          <select id="cyl-preset-select"><option value="">-- Select Preset --</option></select>
+          <button onclick="loadCylinderPreset()">Load</button>
+          <button onclick="saveCylinderPreset()">Save</button>
+          <button onclick="deleteCylinderPreset()">Delete</button>
+        </div>
+      </div>
+      <div class="section probe-params">
+        <div class="section-title">Parameters</div>
+        <div class="form-row">
+          <span class="form-label">Preset Name:</span>
+          <input type="text" id="cyl-preset-name" placeholder="e.g., 25mm Dowel">
+        </div>
+        <div class="form-row">
+          <span class="form-label">Cylinder Ø:</span>
+          <div class="input-with-unit">
+            <input type="number" id="cyl-diameter" value="25" min="1" step="0.1" onchange="updateCylProbeDistance()">
+            <span class="unit-suffix">mm</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Probe Distance:</span>
+          <div class="input-with-unit">
+            <input type="number" id="cyl-probe-distance" value="17.5" min="1" step="0.5">
+            <span class="unit-suffix">mm</span>
+          </div>
+          <span class="text-muted" style="font-size: 11px;">(auto: Ø/2 + 5)</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Probe Depth:</span>
+          <div class="input-with-unit">
+            <input type="number" id="cyl-probe-depth" value="5" min="1" step="0.5">
+            <span class="unit-suffix">mm</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Feedrate:</span>
+          <div class="input-with-unit">
+            <input type="number" id="cyl-feedrate" value="100" min="10" step="10">
+            <span class="unit-suffix">mm/min</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Probe Tip Ø:</span>
+          <div class="input-with-unit">
+            <input type="number" id="cyl-tip-dia" value="2.0" readonly disabled>
+            <span class="unit-suffix">mm</span>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Actions</div>
+        <div id="cyl-probe-status"></div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button onclick="testProbeConnection('cylinder')" class="btn-primary">Test Probe</button>
+          <button onclick="runCylinderProbe()" class="btn-success" id="cyl-run-btn">▶ Run Probe</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="section">
+        <div class="section-title">Results</div>
+        <div id="cyl-results"><p class="text-muted">No probe results yet.</p></div>
+        <div class="results-actions" id="cyl-results-actions" style="display: none;">
+          <button onclick="setCylinderZero('X')">Set X0</button>
+          <button onclick="setCylinderZero('Y')">Set Y0</button>
+          <button onclick="setCylinderZero('XY')" class="btn-primary">Set XY0</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="cyl-repeatability-mode" onchange="toggleCylRepeatability()">
+            Repeatability Test Mode
+          </label>
+        </div>
+        <div id="cyl-history"><p class="text-muted">Enable repeatability mode to compare runs.</p></div>
+        <div id="cyl-history-actions" style="display: none; margin-top: 8px;">
+          <button onclick="exportCylinderRepeatability()" class="btn-primary">Export CSV</button>
+          <button onclick="clearCylinderHistory()">Clear History</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HOLE PROBE TAB (placeholder) -->
+
+<!-- HOLE PROBE TAB -->
+<div class="tab-panel" id="panel-hole">
+  <div class="probe-layout">
+    <div>
+      <div class="section">
+        <div class="section-title">Presets</div>
+        <div class="preset-row">
+          <select id="hole-preset-select"><option value="">-- Select Preset --</option></select>
+          <button onclick="loadHolePreset()">Load</button>
+          <button onclick="saveHolePreset()">Save</button>
+          <button onclick="deleteHolePreset()">Delete</button>
+        </div>
+      </div>
+      <div class="section probe-params">
+        <div class="section-title">Parameters</div>
+        <div class="form-row">
+          <span class="form-label">Preset Name:</span>
+          <input type="text" id="hole-preset-name" placeholder="e.g., 20mm Bore">
+        </div>
+        <div class="form-row">
+          <span class="form-label">Hole Ø (approx):</span>
+          <div class="input-with-unit">
+            <input type="number" id="hole-diameter" value="20" min="5" step="0.1" onchange="updateHoleProbeDistance()">
+            <span class="unit-suffix">mm</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Probe Distance:</span>
+          <div class="input-with-unit">
+            <input type="number" id="hole-probe-distance" value="12" min="1" step="0.5">
+            <span class="unit-suffix">mm</span>
+          </div>
+          <span class="text-muted" style="font-size: 11px;">(auto: Ø/2 + 2)</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Feedrate:</span>
+          <div class="input-with-unit">
+            <input type="number" id="hole-feedrate" value="100" min="10" step="10">
+            <span class="unit-suffix">mm/min</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Probe Tip Ø:</span>
+          <div class="input-with-unit">
+            <input type="number" id="hole-tip-dia" value="2.0" readonly disabled>
+            <span class="unit-suffix">mm</span>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Actions</div>
+        <div id="hole-probe-status"></div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button onclick="testProbeConnection('hole')" class="btn-primary">Test Probe</button>
+          <button onclick="runHoleProbe()" class="btn-success" id="hole-run-btn">▶ Run Probe</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="section">
+        <div class="section-title">Results</div>
+        <div id="hole-results"><p class="text-muted">No probe results yet.</p></div>
+        <div class="results-actions" id="hole-results-actions" style="display: none;">
+          <button onclick="setHoleZero('X')">Set X0</button>
+          <button onclick="setHoleZero('Y')">Set Y0</button>
+          <button onclick="setHoleZero('XY')" class="btn-primary">Set XY0</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="hole-repeatability-mode" onchange="toggleHoleRepeatability()">
+            Repeatability Test Mode
+          </label>
+        </div>
+        <div id="hole-history"><p class="text-muted">Enable repeatability mode to compare runs.</p></div>
+        <div id="hole-history-actions" style="display: none; margin-top: 8px;">
+          <button onclick="clearHoleHistory()">Clear History</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- CORNER PROBE TAB -->
+<div class="tab-panel" id="panel-corner">
+  <div class="probe-layout">
+    <div>
+      <div class="section">
+        <div class="section-title">Presets</div>
+        <div class="preset-row">
+          <select id="corner-preset-select"><option value="">-- Select Preset --</option></select>
+          <button onclick="loadCornerPreset()">Load</button>
+          <button onclick="saveCornerPreset()">Save</button>
+          <button onclick="deleteCornerPreset()">Delete</button>
+        </div>
+      </div>
+      <div class="section probe-params">
+        <div class="section-title">Parameters</div>
+        <div class="form-row">
+          <span class="form-label">Preset Name:</span>
+          <input type="text" id="corner-preset-name" placeholder="e.g., Front Left">
+        </div>
+        <div class="form-row">
+          <span class="form-label">Corner Location:</span>
+          <select id="corner-location" style="width: 250px;">
+            <option value="SW">SW - Southwest (Bottom-Left)</option>
+            <option value="SE">SE - Southeast (Bottom-Right)</option>
+            <option value="NW">NW - Northwest (Top-Left)</option>
+            <option value="NE">NE - Northeast (Top-Right)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Corner Type:</span>
+          <select id="corner-type" style="width: 250px;">
+            <option value="outside">Outside Corner (workpiece edge)</option>
+            <option value="inside" disabled>Inside Corner (coming soon)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Start Distance (A):</span>
+          <div class="input-with-unit">
+            <input type="number" id="corner-start-dist" value="5" min="1" step="0.5">
+            <span class="unit-suffix">mm</span>
+          </div>
+          <span style="font-size: 12px; color: #999; margin-left: 8px;">Distance from each wall at start</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Travel Distance (2→B):</span>
+          <div class="input-with-unit">
+            <input type="number" id="corner-travel-dist" value="10" min="2" step="1">
+            <span class="unit-suffix">mm</span>
+          </div>
+          <span style="font-size: 12px; color: #999; margin-left: 8px;">Auto: 2× start distance</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Feedrate:</span>
+          <div class="input-with-unit">
+            <input type="number" id="corner-feedrate" value="100" min="10" step="10">
+            <span class="unit-suffix">mm/min</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Move to Corner:</span>
+          <input type="checkbox" id="corner-move-to-corner" checked style="width: auto; margin-left: 8px;">
+          <span style="font-size: 12px; color: #999; margin-left: 8px;">Raise Z and move to corner at end</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Z Safe Distance:</span>
+          <div class="input-with-unit">
+            <input type="number" id="corner-z-safe" value="10" min="1" step="1">
+            <span class="unit-suffix">mm</span>
+          </div>
+          <span style="font-size: 12px; color: #999; margin-left: 8px;">Relative: raise Z this amount from current position</span>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Setup Instructions</div>
+        <div style="font-size: 13px; line-height: 1.6; color: #ccc;">
+          <p><strong>OUTSIDE Corner Positioning:</strong></p>
+          <ul style="margin: 5px 0; padding-left: 20px;">
+            <li><strong>SW (Southwest/Bottom-Left):</strong> Position probe LEFT of vertical wall, BELOW horizontal wall</li>
+            <li><strong>SE (Southeast/Bottom-Right):</strong> Position probe RIGHT of vertical wall, BELOW horizontal wall</li>
+            <li><strong>NW (Northwest/Top-Left):</strong> Position probe LEFT of vertical wall, ABOVE horizontal wall</li>
+            <li><strong>NE (Northeast/Top-Right):</strong> Position probe RIGHT of vertical wall, ABOVE horizontal wall</li>
+          </ul>
+          <p style="margin-top: 10px;"><strong>Start Position (A):</strong></p>
+          <ul style="margin: 5px 0; padding-left: 20px;">
+            <li>Set Z at mid-height of workpiece sidewall</li>
+            <li>Position probe at "Start Distance" from BOTH walls (default 5mm)</li>
+            <li>Probe will move in L-shaped pattern to find both walls</li>
+          </ul>
+          <p style="margin-top: 10px; color: #ff9800;"><strong>Sequence:</strong> (1) Probe first wall → (2) Move parallel → (3) Move past first wall → (4) Probe second wall → Done or move to corner</p>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Actions</div>
+        <div id="corner-probe-status"></div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button onclick="testProbeConnection('corner')" class="btn-primary">Test Probe</button>
+          <button onclick="runCornerProbe()" class="btn-success" id="corner-run-btn">▶ Run Probe</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="section">
+        <div class="section-title">Results</div>
+        <div id="corner-results"><p class="text-muted">No probe results yet.</p></div>
+        <div class="results-actions" id="corner-results-actions" style="display: none;">
+          <button onclick="setCornerZero('X')">Set X0</button>
+          <button onclick="setCornerZero('Y')">Set Y0</button>
+          <button onclick="setCornerZero('XY')" class="btn-primary">Set XY0</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Instructions</div>
+        <div style="font-size: 12px; line-height: 1.6;">
+          <p><strong>Inside Corner:</strong> Position probe tip near the corner, inside the workpiece. Probe will search outward to find both edges.</p>
+          <p style="margin-top: 8px;"><strong>Outside Corner:</strong> Position probe tip outside the corner. Probe will search inward to find both edges.</p>
+          <p style="margin-top: 8px;"><strong>Corner Type:</strong> Select quadrant based on which direction the corner extends (+X is right, +Y is away from you).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SIDE ALIGN TAB -->
+<div class="tab-panel" id="panel-side-align">
+  <div class="section">
+    <div class="section-title">Side Probe Settings</div>
+
+    <div class="form-row">
+      <span class="form-label">Probe Direction:</span>
+      <select id="side-probe-direction" style="width: 250px;">
+        <option value="+X">Right (+X)</option>
+        <option value="-X">Left (-X)</option>
+        <option value="+Y">Up (+Y)</option>
+        <option value="-Y">Down (-Y)</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <span class="form-label">Probe Distance:</span>
+      <div class="input-with-unit">
+        <input type="number" id="side-probe-distance" value="5" min="1" step="0.5">
+        <span class="unit-suffix">mm</span>
+      </div>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">Distance from edge to start position</span>
+    </div>
+
+    <div class="form-row">
+      <span class="form-label">Feedrate:</span>
+      <div class="input-with-unit">
+        <input type="number" id="side-probe-feedrate" value="100" min="10" step="10">
+        <span class="unit-suffix">mm/min</span>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <span class="form-label">Slow Feedrate:</span>
+      <div class="input-with-unit">
+        <input type="number" id="side-probe-feedrate-slow" value="25" min="5" step="5">
+        <span class="unit-suffix">mm/min</span>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="side-raise-z" style="width: auto;">
+        <span>Raise Z before moving between points</span>
+      </label>
+      <span style="font-size: 12px; color: #999; margin-left: 24px;">For "Probe Both Points" auto-sequence</span>
+    </div>
+
+    <div class="form-row">
+      <span class="form-label">Z Safe Distance:</span>
+      <div class="input-with-unit">
+        <input type="number" id="side-z-safe" value="10" min="1" step="1">
+        <span class="unit-suffix">mm</span>
+      </div>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">Relative: raise Z this amount</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Point Status</div>
+
+    <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+      <div style="flex: 1;">
+        <div style="font-weight: bold; margin-bottom: 5px;">Point 1:</div>
+        <div id="side-point1-status" style="color: #999;">Not Set</div>
+        <div id="side-point1-coords" style="font-size: 12px; color: #666; margin-top: 3px;"></div>
+      </div>
+      <div style="flex: 1;">
+        <div style="font-weight: bold; margin-bottom: 5px;">Point 2:</div>
+        <div id="side-point2-status" style="color: #999;">Not Set</div>
+        <div id="side-point2-coords" style="font-size: 12px; color: #666; margin-top: 3px;"></div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button id="btn-side-set-point1" class="btn" onclick="setSidePoint1AndProbe()">Set Point 1 &amp; Probe</button>
+      <button id="btn-side-set-point2" class="btn" onclick="setSidePoint2AndProbe()" disabled>Set Point 2 &amp; Probe</button>
+      <button id="btn-side-reprobe-point2" class="btn" onclick="reprobeSidePoint2()" disabled>Re-Probe Point 2</button>
+      <button id="btn-side-probe-both" class="btn" onclick="probeBothSidePoints()" disabled>Probe Both Points</button>
+      <button id="btn-side-clear" class="btn" onclick="clearSidePoints()" disabled>Clear All Points</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Results</div>
+    <div id="side-results" style="min-height: 100px; padding: 10px; background: #2a2a2a; border-radius: 4px; font-family: monospace; font-size: 13px; white-space: pre-wrap;">
+Ready to probe. Manually jog to first point and click "Set Point 1 &amp; Probe".
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Jog Controls</div>
+
+    <div class="jog-container">
+      <div>
+        <div class="jog-xy">
+          <div class="jog-placeholder"></div>
+          <button class="jog-btn" data-axis="Y" data-dir="+">▲</button>
+          <div class="jog-placeholder"></div>
+          <button class="jog-btn" data-axis="X" data-dir="-">◀</button>
+          <div class="jog-placeholder"></div>
+          <button class="jog-btn" data-axis="X" data-dir="+">▶</button>
+          <div class="jog-placeholder"></div>
+          <button class="jog-btn" data-axis="Y" data-dir="-">▼</button>
+          <div class="jog-placeholder"></div>
+        </div>
+        <div class="jog-label">XY</div>
+      </div>
+    </div>
+    <p class="text-muted mt-1" style="text-align: center; font-size: 11px;">Click and hold to jog</p>
+  </div>
+</div>
+
+<!-- HEIGHT MAP TAB -->
+<div class="tab-panel" id="panel-heightmap">
+  <div class="section">
+    <div class="section-title">Preset Management</div>
+    <div class="form-row">
+      <span class="form-label">Preset Name:</span>
+      <input type="text" id="hm-preset-name" placeholder="e.g., 4040 Pro Max" style="flex: 1;">
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 10px;">
+      <button class="btn btn-primary" onclick="saveHeightmapPreset()">Save Current as Preset</button>
+      <select id="hm-preset-list" style="flex: 1;" onchange="loadHeightmapPreset()">
+        <option value="">-- Load Preset --</option>
+      </select>
+      <button class="btn" onclick="deleteHeightmapPreset()">Delete Preset</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">T-Slot Configuration</div>
+    <div class="form-row">
+      <span class="form-label">Slot X Positions:</span>
+      <input type="text" id="hm-slot-x" value="0,60,140.3,200.3,280.6,340.6" style="flex: 1;">
+      <span class="unit-suffix">mm</span>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Y Positions:</span>
+      <input type="text" id="hm-y-pos" value="0,50,100,150,200,250,300,350,380" style="flex: 1;">
+      <span class="unit-suffix">mm</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Probe Settings</div>
+    <div class="form-row">
+      <span class="form-label">Probe Depth:</span>
+      <div class="input-with-unit">
+        <input type="number" id="hm-probe-depth" value="-10" step="0.5" max="-0.5">
+        <span class="unit-suffix">mm</span>
+      </div>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">How far to probe down from Z=0</span>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Feedrate:</span>
+      <div class="input-with-unit">
+        <input type="number" id="hm-feedrate" value="100" step="10">
+        <span class="unit-suffix">mm/min</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Timeout:</span>
+      <div class="input-with-unit">
+        <input type="number" id="hm-timeout" value="30" step="5">
+        <span class="unit-suffix">sec</span>
+      </div>
+      <span style="font-size: 12px; color: #999; margin-left: 8px;">Watchdog per command</span>
+    </div>
+    <div class="form-row">
+      <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+        <input type="checkbox" id="hm-double-touch" checked>
+        <span class="form-label" style="min-width: auto;">Double-Touch Probing</span>
+      </label>
+      <span style="font-size: 11px; color: #999; margin-left: 8px;">More accurate (fast+slow probe), uncheck for faster single-touch</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Start Probing</div>
+    <p class="text-muted" style="margin-bottom: 10px;">
+      Position probe at first point (SW t-slot rail, X=0 Y=0) and set work coordinate system.
+    </p>
+    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <button class="btn" onclick="setHeightmapStartPoint()">Set Start Point (G10 L20 P1 X0 Y0)</button>
+      <button class="btn btn-primary" id="btn-hm-start" onclick="startHeightmapProbe()">Start Probing</button>
+      <button class="btn" id="btn-hm-abort" onclick="abortHeightmapProbe()" disabled style="background: #c00; color: white;">Abort</button>
+    </div>
+    <div id="hm-progress" style="font-weight: bold; color: #4a9eff; margin-bottom: 10px;"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Results</div>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+      <button class="btn" id="btn-hm-export-csv" onclick="exportHeightmapCSV()" disabled>Export CSV</button>
+      <button class="btn" id="btn-hm-export-html" onclick="exportHeightmapHTML()" disabled>Export HTML Report</button>
+    </div>
+    <div id="hm-results" style="min-height: 150px; padding: 10px; background: #2a2a2a; border-radius: 4px; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 300px; overflow: auto;">
+No data yet. Position probe and click "Start Probing".
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div class="tab-panel" id="panel-settings">
+  <div class="settings-grid">
+    <div class="section">
+      <div class="section-title">Connection</div>
+      <div class="form-row">
+        <span class="form-label">IP Address:</span>
+        <input type="text" id="setting-ip" value="fluidnc.local">
+      </div>
+      <div class="form-row">
+        <span class="form-label">Port:</span>
+        <input type="number" id="setting-port" value="80">
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Probe Settings</div>
+      <div class="form-row">
+        <span class="form-label">Tip Diameter:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-tip-dia" value="2.0" step="0.1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Feedrate:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-feedrate" value="100" step="10">
+          <span class="unit-suffix">mm/min</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Slow Feedrate:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-feedrate-slow" value="50" step="10">
+          <span class="unit-suffix">mm/min</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Timeout:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-timeout" value="30" step="5">
+          <span class="unit-suffix">sec</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Retract Distance:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-retract" value="2.0" step="0.5">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Jog Settings</div>
+      <div class="form-row">
+        <span class="form-label">XY Speed:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-jog-xy" value="1800" step="100">
+          <span class="unit-suffix">mm/min</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Z Speed:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-jog-z" value="400" step="50">
+          <span class="unit-suffix">mm/min</span>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Output Commands</div>
+      <div class="form-row">
+        <span class="form-label">Mist On:</span>
+        <input type="text" id="setting-mist-on" value="M7">
+      </div>
+      <div class="form-row">
+        <span class="form-label">Mist Off:</span>
+        <input type="text" id="setting-mist-off" value="M9">
+      </div>
+      <div class="form-row">
+        <span class="form-label">Vacuum On:</span>
+        <input type="text" id="setting-vacuum-on" value="M8">
+      </div>
+      <div class="form-row">
+        <span class="form-label">Vacuum Off:</span>
+        <input type="text" id="setting-vacuum-off" value="M9">
+      </div>
+      <div class="form-row">
+        <span class="form-label">IoT On:</span>
+        <input type="text" id="setting-iot-on" value="M64 P0">
+      </div>
+      <div class="form-row">
+        <span class="form-label">IoT Off:</span>
+        <input type="text" id="setting-iot-off" value="M65 P0">
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Default Probe Distances</div>
+      <div class="form-row">
+        <span class="form-label">Cylinder Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-cyl-distance" value="20" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Hole Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-hole-distance" value="20" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Corner Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-corner-distance" value="20" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Side Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-side-distance" value="5" step="0.5">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Laser Settings</div>
+      <div class="form-row">
+        <span class="form-label">Low Power Default:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-laser-low" value="7" min="1" max="10" step="1">
+          <span class="unit-suffix">% (max 10)</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">High Power Max:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-laser-high-max" value="50" min="1" max="100" step="1">
+          <span class="unit-suffix">% (safety cap)</span>
+        </div>
+      </div>
+      <p class="text-muted mt-1" style="font-size:11px;">Power scale: 0–255 PWM. Low power capped at 10% in UI regardless of this setting.</p>
+    </div>
+    <div class="section">
+      <div class="section-title">Stored Tool Offset (Spindle → Laser)</div>
+      <div class="form-row">
+        <span class="form-label">Offset X:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-offset-x" value="0" step="0.001">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Offset Y:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-offset-y" value="0" step="0.001">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <p class="text-muted mt-1" style="font-size:11px;">
+        These values are set automatically by the "Save Average as Offset" button in the Tool Offset section.
+        You can also edit them manually here. Positive X = laser is to the right of spindle.
+      </p>
+    </div>
+    <div class="section">
+      <div class="section-title">Default Z Safe Heights</div>
+      <div class="form-row">
+        <span class="form-label">Cylinder/Hole/Corner:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-z-safe" value="10" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Side Probe:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-side-z-safe" value="10" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+      <div class="form-row">
+        <span class="form-label">Height Map:</span>
+        <div class="input-with-unit">
+          <input type="number" id="setting-default-heightmap-z-safe" value="20" step="1">
+          <span class="unit-suffix">mm</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Presets Summary</div>
+    <p id="cylinder-preset-count" class="text-muted">0 cylinder presets saved</p>
+    <p id="hole-preset-count" class="text-muted">0 hole presets saved</p>
+    <p id="corner-preset-count" class="text-muted">0 corner presets saved</p>
+    <p id="heightmap-preset-count" class="text-muted">0 heightmap presets saved</p>
+  </div>
+  <div class="section">
+    <div class="section-title">JSON Settings Editor</div>
+    <textarea id="settings-json"></textarea>
+    <div class="json-actions">
+      <button id="refresh-json-btn">Refresh</button>
+      <button id="apply-json-btn" class="btn-primary">Apply</button>
+      <button id="format-json-btn">Format</button>
+      <button id="fullscreen-json-btn">Full Screen</button>
+    </div>
+  </div>
+  <div class="instructions">
+    <strong>To Save Settings:</strong> Use browser File → Save As (Ctrl+S) to save the HTML file with your settings embedded.
+  </div>
+</div>
+
+</main>
+
+<footer id="status-bar">
+  <span>Connection: <span id="footer-connection" class="text-danger">Disconnected</span></span>
+  <span>Alarm: <span id="footer-alarm" class="alarm-status">None</span></span>
+</footer>
+</div>
+
+<!-- FULLSCREEN JSON EDITOR OVERLAY -->
+<div id="fullscreen-overlay" class="fullscreen-overlay">
+  <div class="fullscreen-header">
+    <h3>JSON Settings Editor (Full Screen)</h3>
+    <button id="exit-fullscreen-btn" class="btn-danger">Exit Full Screen (Esc)</button>
+  </div>
+  <div class="fullscreen-content">
+    <textarea id="fullscreen-json"></textarea>
+  </div>
+  <div class="json-actions" style="margin-top: 12px;">
+    <button id="fullscreen-refresh-btn">Refresh</button>
+    <button id="fullscreen-apply-btn" class="btn-primary">Apply</button>
+    <button id="fullscreen-format-btn">Format</button>
+  </div>
+</div>
+
+<!-- EMBEDDED SETTINGS (survives Save-As) -->
+<script id="user-settings" type="application/json">
+{
+  "connection": { "ip": "fluidnc.local", "port": 80 },
+  "probe": {
+    "tipDiameter": 2.0,
+    "feedrate": 100,
+    "feedrateSlow": 50,
+    "timeout": 30,
+    "retractDistance": 2.0
+  },
+  "jog": { "xySpeed": 1800, "zSpeed": 400 },
+  "outputs": {
+    "mistOn": "M7", "mistOff": "M9",
+    "vacuumOn": "M8", "vacuumOff": "M9",
+    "iotOn": "M64 P0", "iotOff": "M65 P0"
+  },
+  "defaults": {
+    "probeDistances": {
+      "cylinder": 20,
+      "hole": 20,
+      "corner": 20,
+      "side": 5
+    },
+    "zSafeHeights": {
+      "standard": 10,
+      "side": 10,
+      "heightmap": 20
+    }
+  },
+  "laser": { "lowPowerPct": 7, "highPowerMaxPct": 50 },
+  "toolOffset": { "x": 0, "y": 0 },
+  "presets": { "cylinder": [], "hole": [], "corner": [], "heightmap": [] }
+}
+</script>
+
+
+<script>
+//#region ===== GLOBAL STATE =====
+const VERSION = '1.15.1';
+const App = {
+  ws: null,
+  isConnected: false,
+  settings: null,
+  alarmState: 'None',
+  position: {
+    mcs: { x: 0, y: 0, z: 0 },
+    wcs: { x: 0, y: 0, z: 0 }
+  },
+  wco: { x: 0, y: 0, z: 0 },
+  isJogging: false,
+  probeInProgress: false,
+  // Tool state
+  activeTool: 0,            // 0 = spindle, 1 = laser
+  laserLowActive: false,
+  // WCS offsets [0]=G54 … [5]=G59
+  wcsOffsets: [
+    { slot: 'G54', pNum: 1, note: 'Default (most G-code files use this)', x: 0, y: 0, z: 0 },
+    { slot: 'G55', pNum: 2, note: '', x: 0, y: 0, z: 0 },
+    { slot: 'G56', pNum: 3, note: '', x: 0, y: 0, z: 0 },
+    { slot: 'G57', pNum: 4, note: '', x: 0, y: 0, z: 0 },
+    { slot: 'G58', pNum: 5, note: '', x: 0, y: 0, z: 0 },
+    { slot: 'G59', pNum: 6, note: '', x: 0, y: 0, z: 0 }
+  ],
+  wcsEditIdx: null,
+  // Position log (session only)
+  posLog: [],
+  posLogIdSeq: 0,
+  // Tool offset measurement
+  offsetSpindlePos: null,   // { x, y } recorded spindle reference
+  offsetLaserPos: null,     // { x, y } recorded laser reference
+  offsetMeasurements: []    // array of { x, y }
+};
+//#endregion
+
+//#region ===== SETTINGS MANAGEMENT =====
+function loadSettings() {
+  try {
+    const el = document.getElementById('user-settings');
+    App.settings = JSON.parse(el.textContent);
+  } catch (e) {
+    console.error('Failed to load settings:', e);
+    App.settings = getDefaultSettings();
+  }
+  applySettingsToUI();
+  updateSettingsJSON();
+}
+
+function getDefaultSettings() {
+  return {
+    connection: { ip: "fluidnc.local", port: 80 },
+    probe: { tipDiameter: 2.0, feedrate: 100, feedrateSlow: 50, timeout: 30, retractDistance: 2.0 },
+    jog: { xySpeed: 1800, zSpeed: 400 },
+    outputs: { mistOn: "M7", mistOff: "M9", vacuumOn: "M8", vacuumOff: "M9", iotOn: "M64 P0", iotOff: "M65 P0" },
+    defaults: {
+      probeDistances: { cylinder: 20, hole: 20, corner: 20, side: 5 },
+      zSafeHeights: { standard: 10, side: 10, heightmap: 20 }
+    },
+    presets: { cylinder: [], hole: [], corner: [], heightmap: [] }
+  };
+}
+
+function applySettingsToUI() {
+  document.getElementById('ip-input').value = App.settings.connection.ip;
+  document.getElementById('port-input').value = App.settings.connection.port;
+  document.getElementById('setting-ip').value = App.settings.connection.ip;
+  document.getElementById('setting-port').value = App.settings.connection.port;
+  document.getElementById('setting-tip-dia').value = App.settings.probe.tipDiameter;
+  document.getElementById('setting-feedrate').value = App.settings.probe.feedrate;
+  document.getElementById('setting-feedrate-slow').value = App.settings.probe.feedrateSlow;
+  document.getElementById('setting-timeout').value = App.settings.probe.timeout;
+  document.getElementById('setting-retract').value = App.settings.probe.retractDistance;
+  document.getElementById('setting-jog-xy').value = App.settings.jog.xySpeed;
+  document.getElementById('setting-jog-z').value = App.settings.jog.zSpeed;
+  if (App.settings.laser) {
+    document.getElementById('setting-laser-low').value     = App.settings.laser.lowPowerPct     || 7;
+    document.getElementById('setting-laser-high-max').value = App.settings.laser.highPowerMaxPct || 50;
+  }
+  if (App.settings.toolOffset) {
+    document.getElementById('setting-offset-x').value = App.settings.toolOffset.x || 0;
+    document.getElementById('setting-offset-y').value = App.settings.toolOffset.y || 0;
+  }
+  document.getElementById('setting-mist-on').value = App.settings.outputs.mistOn;
+  document.getElementById('setting-mist-off').value = App.settings.outputs.mistOff;
+  document.getElementById('setting-vacuum-on').value = App.settings.outputs.vacuumOn;
+  document.getElementById('setting-vacuum-off').value = App.settings.outputs.vacuumOff;
+  document.getElementById('setting-iot-on').value = App.settings.outputs.iotOn;
+  document.getElementById('setting-iot-off').value = App.settings.outputs.iotOff;
+
+  // Default probe distances
+  if (App.settings.defaults && App.settings.defaults.probeDistances) {
+    document.getElementById('setting-default-cyl-distance').value = App.settings.defaults.probeDistances.cylinder;
+    document.getElementById('setting-default-hole-distance').value = App.settings.defaults.probeDistances.hole;
+    document.getElementById('setting-default-corner-distance').value = App.settings.defaults.probeDistances.corner;
+    document.getElementById('setting-default-side-distance').value = App.settings.defaults.probeDistances.side;
+  }
+
+  // Default Z safe heights
+  if (App.settings.defaults && App.settings.defaults.zSafeHeights) {
+    document.getElementById('setting-default-z-safe').value = App.settings.defaults.zSafeHeights.standard;
+    document.getElementById('setting-default-side-z-safe').value = App.settings.defaults.zSafeHeights.side;
+    document.getElementById('setting-default-heightmap-z-safe').value = App.settings.defaults.zSafeHeights.heightmap;
+  }
+
+  document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
+  document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
+  updatePresetCounts();
+}
+
+function collectSettingsFromUI() {
+  return {
+    connection: {
+      ip: document.getElementById('setting-ip').value,
+      port: parseInt(document.getElementById('setting-port').value) || 80
+    },
+    probe: {
+      tipDiameter: parseFloat(document.getElementById('setting-tip-dia').value) || 2.0,
+      feedrate: parseInt(document.getElementById('setting-feedrate').value) || 100,
+      feedrateSlow: parseInt(document.getElementById('setting-feedrate-slow').value) || 50,
+      timeout: parseInt(document.getElementById('setting-timeout').value) || 30,
+      retractDistance: parseFloat(document.getElementById('setting-retract').value) || 2.0
+    },
+    jog: {
+      xySpeed: parseInt(document.getElementById('setting-jog-xy').value) || 1800,
+      zSpeed: parseInt(document.getElementById('setting-jog-z').value) || 400
+    },
+    outputs: {
+      mistOn: document.getElementById('setting-mist-on').value,
+      mistOff: document.getElementById('setting-mist-off').value,
+      vacuumOn: document.getElementById('setting-vacuum-on').value,
+      vacuumOff: document.getElementById('setting-vacuum-off').value,
+      iotOn: document.getElementById('setting-iot-on').value,
+      iotOff: document.getElementById('setting-iot-off').value
+    },
+    defaults: {
+      probeDistances: {
+        cylinder: parseFloat(document.getElementById('setting-default-cyl-distance').value) || 20,
+        hole: parseFloat(document.getElementById('setting-default-hole-distance').value) || 20,
+        corner: parseFloat(document.getElementById('setting-default-corner-distance').value) || 20,
+        side: parseFloat(document.getElementById('setting-default-side-distance').value) || 5
+      },
+      zSafeHeights: {
+        standard: parseFloat(document.getElementById('setting-default-z-safe').value) || 10,
+        side: parseFloat(document.getElementById('setting-default-side-z-safe').value) || 10,
+        heightmap: parseFloat(document.getElementById('setting-default-heightmap-z-safe').value) || 20
+      }
+    },
+    laser: {
+      lowPowerPct:    Math.min(10, parseInt(document.getElementById('setting-laser-low').value) || 7),
+      highPowerMaxPct: parseInt(document.getElementById('setting-laser-high-max').value) || 50
+    },
+    toolOffset: {
+      x: parseFloat(document.getElementById('setting-offset-x').value) || 0,
+      y: parseFloat(document.getElementById('setting-offset-y').value) || 0
+    },
+    presets: App.settings.presets
+  };
+}
+
+function updateSettingsJSON() {
+  document.getElementById('settings-json').value = JSON.stringify(App.settings, null, 2);
+}
+
+function saveSettingsToEmbedded() {
+  const el = document.getElementById('user-settings');
+  if (el) el.textContent = JSON.stringify(App.settings, null, 2);
+}
+
+function setupSettingsAutoSave() {
+  const inputs = document.querySelectorAll('#panel-settings input, #panel-settings select');
+  inputs.forEach(input => {
+    input.addEventListener('change', () => {
+      App.settings = collectSettingsFromUI();
+      saveSettingsToEmbedded();
+      updateSettingsJSON();
+      document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
+      document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
+    });
+  });
+}
+
+function onRefreshJSON() {
+  App.settings = collectSettingsFromUI();
+  updateSettingsJSON();
+  saveSettingsToEmbedded();
+}
+
+function onApplyJSON() {
+  try {
+    App.settings = JSON.parse(document.getElementById('settings-json').value);
+    applySettingsToUI();
+    saveSettingsToEmbedded();
+    alert('Settings applied!');
+  } catch (e) {
+    alert('Invalid JSON: ' + e.message);
+  }
+}
+
+function onFormatJSON() {
+  try {
+    const obj = JSON.parse(document.getElementById('settings-json').value);
+    document.getElementById('settings-json').value = JSON.stringify(obj, null, 2);
+  } catch (e) {
+    alert('Invalid JSON: ' + e.message);
+  }
+}
+
+function enterFullscreenJSON() {
+  const overlay = document.getElementById('fullscreen-overlay');
+  const mainJSON = document.getElementById('settings-json').value;
+  document.getElementById('fullscreen-json').value = mainJSON;
+  overlay.classList.add('active');
+  document.getElementById('fullscreen-json').focus();
+}
+
+function exitFullscreenJSON() {
+  const overlay = document.getElementById('fullscreen-overlay');
+  const fullscreenJSON = document.getElementById('fullscreen-json').value;
+  document.getElementById('settings-json').value = fullscreenJSON;
+  overlay.classList.remove('active');
+}
+
+function updatePresetCounts() {
+  document.getElementById('cylinder-preset-count').textContent = App.settings.presets.cylinder.length + ' cylinder presets saved';
+  document.getElementById('hole-preset-count').textContent = App.settings.presets.hole.length + ' hole presets saved';
+  document.getElementById('corner-preset-count').textContent = App.settings.presets.corner.length + ' corner presets saved';
+  document.getElementById('heightmap-preset-count').textContent = (App.settings.presets.heightmap || []).length + ' heightmap presets saved';
+}
+//#endregion
+
+//#region ===== WEBSOCKET CONNECTION =====
+function connect() {
+  if (App.isConnected) return;
+  const ip = document.getElementById('ip-input').value.trim();
+  const port = document.getElementById('port-input').value.trim();
+  const url = 'ws://' + ip + ':' + port + '/';
+  console.log('Connecting to', url);
+  
+  try {
+    App.ws = new WebSocket(url);
+  } catch (e) {
+    console.error('Connection failed:', e);
+    return;
+  }
+  
+  App.ws.onopen = () => {
+    App.isConnected = true;
+    updateConnectionStatus('connected');
+    sendCommand('?');
+    sendCommand('$#');
+    setTimeout(() => sendCommand('?'), 300);
+  };
+  
+  App.ws.onclose = () => {
+    App.isConnected = false;
+    updateConnectionStatus('disconnected');
+  };
+  
+  App.ws.onerror = (e) => {
+    console.error('WebSocket error:', e);
+    updateConnectionStatus('disconnected');
+  };
+  
+  App.ws.onmessage = async (event) => {
+    let data = event.data;
+    if (data instanceof Blob) data = await data.text();
+    handleMessage(data);
+  };
+}
+
+function disconnect() {
+  if (App.ws) { App.ws.close(); App.ws = null; }
+  App.isConnected = false;
+  updateConnectionStatus('disconnected');
+}
+
+function sendCommand(cmd) {
+  if (App.ws && App.isConnected) {
+    console.log('>> ' + cmd);
+    App.ws.send(cmd + '\n');
+    return true;
+  }
+  return false;
+}
+
+function updateConnectionStatus(status) {
+  const dot = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  const footer = document.getElementById('footer-connection');
+  const connectBtn = document.getElementById('connect-btn');
+  const disconnectBtn = document.getElementById('disconnect-btn');
+  
+  if (status === 'connected') {
+    dot.className = 'status-dot connected';
+    text.textContent = 'Connected';
+    footer.textContent = 'Connected';
+    footer.className = 'text-success';
+    connectBtn.disabled = true;
+    disconnectBtn.disabled = false;
+  } else {
+    dot.className = 'status-dot';
+    text.textContent = 'Disconnected';
+    footer.textContent = 'Disconnected';
+    footer.className = 'text-danger';
+    connectBtn.disabled = false;
+    disconnectBtn.disabled = true;
+  }
+}
+//#endregion
+
+//#region ===== MESSAGE HANDLING =====
+function handleMessage(raw) {
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    console.log('<< ' + trimmed);
+    
+    if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
+      parseStatusReport(trimmed);
+    } else if (/^\[G5[4-9]:/.test(trimmed)) {
+      parseWCSOffsetLine(trimmed);
+    } else if (trimmed.toLowerCase().startsWith('alarm:') || trimmed.includes('ALARM:')) {
+      setAlarmState(trimmed);
+    }
+  }
+}
+
+function parseStatusReport(report) {
+  const content = report.slice(1, -1);
+  const parts = content.split('|');
+  
+  if (parts[0].toLowerCase().includes('alarm')) setAlarmState(parts[0]);
+  else clearAlarmState();
+  
+  for (const part of parts) {
+    if (part.startsWith('MPos:')) {
+      const c = part.substring(5).split(',');
+      if (c.length >= 3) {
+        App.position.mcs.x = parseFloat(c[0]) || 0;
+        App.position.mcs.y = parseFloat(c[1]) || 0;
+        App.position.mcs.z = parseFloat(c[2]) || 0;
+        App.position.wcs.x = App.position.mcs.x - App.wco.x;
+        App.position.wcs.y = App.position.mcs.y - App.wco.y;
+        App.position.wcs.z = App.position.mcs.z - App.wco.z;
+      }
+    }
+  }
+  updatePositionDisplay();
+}
+
+function parseWCSOffsetLine(line) {
+  const m = line.match(/\[G(5[4-9]):([-\d.]+),([-\d.]+),([-\d.]+)/);
+  if (!m) return;
+  const x = parseFloat(m[2]) || 0;
+  const y = parseFloat(m[3]) || 0;
+  const z = parseFloat(m[4]) || 0;
+  const slotName = 'G' + m[1];
+
+  if (slotName === 'G54') {
+    App.wco.x = x; App.wco.y = y; App.wco.z = z;
+    App.position.wcs.x = App.position.mcs.x - App.wco.x;
+    App.position.wcs.y = App.position.mcs.y - App.wco.y;
+    App.position.wcs.z = App.position.mcs.z - App.wco.z;
+    updatePositionDisplay();
+  }
+
+  const idx = parseInt(m[1]) - 54; // 54→0 … 59→5
+  if (idx >= 0 && idx < 6) {
+    App.wcsOffsets[idx].x = x;
+    App.wcsOffsets[idx].y = y;
+    App.wcsOffsets[idx].z = z;
+  }
+  renderWCSTable(); // re-render after each line; fine since all 6 arrive quickly
+}
+
+function setAlarmState(alarm) {
+  App.alarmState = alarm;
+  const el = document.getElementById('footer-alarm');
+  el.textContent = alarm;
+  el.className = 'alarm-status alarm';
+}
+
+function clearAlarmState() {
+  if (App.alarmState !== 'None') {
+    App.alarmState = 'None';
+    const el = document.getElementById('footer-alarm');
+    el.textContent = 'None';
+    el.className = 'alarm-status';
+  }
+}
+//#endregion
+
+//#region ===== EMERGENCY STOP =====
+function emergencyStop() {
+  console.log('*** EMERGENCY STOP ***');
+  if (App.ws && App.isConnected) {
+    App.ws.send('!');
+    setTimeout(() => { if (App.ws && App.isConnected) App.ws.send('\x18'); }, 100);
+    setTimeout(() => { if (App.ws && App.isConnected) App.ws.send('M5\n'); }, 300);
+  }
+  stopContinuousJog();
+  App.probeInProgress = false;
+  // Reset laser UI state
+  if (App.laserLowActive) {
+    App.laserLowActive = false;
+    const btn = document.getElementById('laser-low-btn');
+    const ind = document.getElementById('laser-low-ind');
+    if (btn) { btn.textContent = 'Fire Low Power (toggle)'; btn.style.cssText = ''; }
+    if (ind) ind.style.display = 'none';
+  }
+  const highBtn = document.getElementById('laser-high-btn');
+  const highInd = document.getElementById('laser-high-ind');
+  if (highBtn) highBtn.classList.remove('firing');
+  if (highInd) highInd.style.display = 'none';
+}
+//#endregion
+
+//#region ===== TAB NAVIGATION =====
+function setupTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+}
+//#endregion
+
+//#region ===== CONTROL TAB =====
+function updatePositionDisplay() {
+  document.getElementById('pos-mcs-x').textContent = App.position.mcs.x.toFixed(3);
+  document.getElementById('pos-mcs-y').textContent = App.position.mcs.y.toFixed(3);
+  document.getElementById('pos-mcs-z').textContent = App.position.mcs.z.toFixed(3);
+  document.getElementById('pos-wcs-x').textContent = App.position.wcs.x.toFixed(3);
+  document.getElementById('pos-wcs-y').textContent = App.position.wcs.y.toFixed(3);
+  document.getElementById('pos-wcs-z').textContent = App.position.wcs.z.toFixed(3);
+}
+
+function refreshPosition() {
+  if (sendCommand('?')) console.log('Position refresh requested');
+  sendCommand('$#');
+}
+
+function zeroAxis(axis) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (axis === 'XY') sendCommand('G10 L20 P1 X0 Y0');
+  else sendCommand('G10 L20 P1 ' + axis + '0');
+  setTimeout(() => { sendCommand('$#'); setTimeout(() => sendCommand('?'), 100); }, 100);
+}
+
+function gotoZero(axis) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (axis === 'XY') sendCommand('G90 G0 X0 Y0');
+  else sendCommand('G90 G0 ' + axis + '0');
+}
+
+function homeAxis(axis) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (axis === 'all') sendCommand('$H');
+  else sendCommand('$H' + axis);
+}
+
+const outputState = { mist: false, vacuum: false, iot: false };
+function toggleOutput(output) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  outputState[output] = !outputState[output];
+  const btn = document.getElementById(output + '-btn');
+  let cmd;
+  if (output === 'mist') cmd = outputState[output] ? App.settings.outputs.mistOn : App.settings.outputs.mistOff;
+  else if (output === 'vacuum') cmd = outputState[output] ? App.settings.outputs.vacuumOn : App.settings.outputs.vacuumOff;
+  else if (output === 'iot') cmd = outputState[output] ? App.settings.outputs.iotOn : App.settings.outputs.iotOff;
+  sendCommand(cmd);
+  btn.textContent = outputState[output] ? 'ON' : 'OFF';
+  btn.classList.toggle('active', outputState[output]);
+}
+
+function setupJogButtons() {
+  document.querySelectorAll('.jog-btn').forEach(btn => {
+    const start = (e) => { e.preventDefault(); startContinuousJog(btn.dataset.axis, btn.dataset.dir); };
+    const stop = () => stopContinuousJog();
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', stop);
+    btn.addEventListener('mouseleave', stop);
+    btn.addEventListener('touchstart', start);
+    btn.addEventListener('touchend', stop);
+    btn.addEventListener('touchcancel', stop);
+  });
+}
+
+function startContinuousJog(axis, dir) {
+  if (!App.isConnected) return;
+  App.isJogging = true;
+  const speed = (axis === 'Z') ? App.settings.jog.zSpeed : App.settings.jog.xySpeed;
+  const distance = (dir === '+') ? 1000 : -1000;
+  sendCommand('$J=G91 G21 ' + axis + distance + ' F' + speed);
+}
+
+function stopContinuousJog() {
+  if (App.isJogging) {
+    App.isJogging = false;
+    if (App.ws && App.isConnected) App.ws.send(String.fromCharCode(0x85));
+  }
+}
+//#endregion
+
+//#region ===== ZERO XY UNDO =====
+let _zeroXYUndo = null; // { x, y } — previous G54 WCO
+
+function zeroAxisXYWithUndo() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  // Snapshot current G54 offset before overwriting it
+  _zeroXYUndo = { x: App.wco.x, y: App.wco.y };
+  const fx = (_zeroXYUndo.x >= 0 ? '+' : '') + _zeroXYUndo.x.toFixed(3);
+  const fy = (_zeroXYUndo.y >= 0 ? '+' : '') + _zeroXYUndo.y.toFixed(3);
+  // Show undo row
+  document.getElementById('zero-undo-label').textContent = `X=${fx}  Y=${fy}`;
+  document.getElementById('zero-undo-row').style.display = '';
+  // Perform the zero
+  zeroAxis('XY');
+}
+
+function undoZeroXY() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (!_zeroXYUndo) return;
+  const fx = (_zeroXYUndo.x >= 0 ? '+' : '') + _zeroXYUndo.x.toFixed(3);
+  const fy = (_zeroXYUndo.y >= 0 ? '+' : '') + _zeroXYUndo.y.toFixed(3);
+  if (!confirm(
+    `Restore previous G54 job origin?\n\n` +
+    `Sends: G10 L2 P1 X${_zeroXYUndo.x.toFixed(3)} Y${_zeroXYUndo.y.toFixed(3)}\n\n` +
+    `This will undo the last "Set Job Origin XY Here" and restore the previous offset.`
+  )) return;
+  sendCommand(`G10 L2 P1 X${_zeroXYUndo.x.toFixed(3)} Y${_zeroXYUndo.y.toFixed(3)}`);
+  _zeroXYUndo = null;
+  document.getElementById('zero-undo-row').style.display = 'none';
+  // Refresh position display after a moment
+  setTimeout(() => sendCommand('?'), 200);
+}
+//#endregion
+
+//#region ===== MCS MOVE =====
+function moveToMCS() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  const parts = [];
+  if (document.getElementById('mcs-x-en').checked) {
+    const v = parseFloat(document.getElementById('mcs-x-val').value);
+    if (isNaN(v)) { alert('Invalid X value'); return; }
+    parts.push('X' + v.toFixed(3));
+  }
+  if (document.getElementById('mcs-y-en').checked) {
+    const v = parseFloat(document.getElementById('mcs-y-val').value);
+    if (isNaN(v)) { alert('Invalid Y value'); return; }
+    parts.push('Y' + v.toFixed(3));
+  }
+  if (document.getElementById('mcs-z-en').checked) {
+    const v = parseFloat(document.getElementById('mcs-z-val').value);
+    if (isNaN(v)) { alert('Invalid Z value'); return; }
+    parts.push('Z' + v.toFixed(3));
+  }
+  if (!parts.length) { alert('Check at least one axis to move.'); return; }
+  sendCommand('G53 G0 ' + parts.join(' '));
+}
+
+function fillMCSFromCurrent() {
+  document.getElementById('mcs-x-val').value = App.position.mcs.x.toFixed(3);
+  document.getElementById('mcs-y-val').value = App.position.mcs.y.toFixed(3);
+  document.getElementById('mcs-z-val').value = App.position.mcs.z.toFixed(3);
+  document.getElementById('mcs-x-en').checked = true;
+  document.getElementById('mcs-y-en').checked = true;
+  document.getElementById('mcs-z-en').checked = true;
+}
+//#endregion
+
+//#region ===== POSITION LOG =====
+function recordPosition() {
+  const id = ++App.posLogIdSeq;
+  App.posLog.push({
+    id,
+    label: 'Pos ' + id,
+    mcs: { ...App.position.mcs },
+    wcs: { ...App.position.wcs },
+    time: new Date().toLocaleTimeString(),
+    selected: false
+  });
+  renderPositionLog();
+}
+
+function renderPositionLog() {
+  const wrap = document.getElementById('pos-log-wrap');
+  if (!App.posLog.length) {
+    wrap.innerHTML = '<p class="text-muted" style="font-size:12px;">No positions recorded yet.</p>';
+    return;
+  }
+  let h = '<table class="poslog-table"><thead><tr>' +
+    '<th class="pl-check">✓</th><th class="pl-label">Label</th><th>Time</th>' +
+    '<th>Mach X</th><th>Mach Y</th><th>Mach Z</th>' +
+    '<th>Job X</th><th>Job Y</th><th>Job Z</th><th></th>' +
+    '</tr></thead><tbody>';
+  for (const e of App.posLog) {
+    const bg = e.selected ? 'background:var(--bg-tertiary);' : '';
+    h += `<tr style="${bg}">
+      <td class="pl-check"><input type="checkbox" ${e.selected ? 'checked' : ''}
+        onchange="togglePosLogSel(${e.id},this.checked)"></td>
+      <td class="pl-label"><input type="text" value="${e.label}"
+        onchange="renamePosLog(${e.id},this.value)"></td>
+      <td>${e.time}</td>
+      <td>${e.mcs.x.toFixed(3)}</td><td>${e.mcs.y.toFixed(3)}</td><td>${e.mcs.z.toFixed(3)}</td>
+      <td>${e.wcs.x.toFixed(3)}</td><td>${e.wcs.y.toFixed(3)}</td><td>${e.wcs.z.toFixed(3)}</td>
+      <td class="pl-acts">
+        <button onclick="gotoPosLog(${e.id})" title="Move to this machine position">Go</button>
+        <button onclick="deletePosLog(${e.id})">✕</button>
+      </td>
+    </tr>`;
+  }
+  wrap.innerHTML = h + '</tbody></table>';
+}
+
+function togglePosLogSel(id, checked) {
+  const e = App.posLog.find(p => p.id === id);
+  if (e) e.selected = checked;
+}
+
+function renamePosLog(id, label) {
+  const e = App.posLog.find(p => p.id === id);
+  if (e) e.label = label;
+}
+
+function gotoPosLog(id) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  const e = App.posLog.find(p => p.id === id);
+  if (!e) return;
+  sendCommand(`G53 G0 X${e.mcs.x.toFixed(3)} Y${e.mcs.y.toFixed(3)} Z${e.mcs.z.toFixed(3)}`);
+}
+
+function deletePosLog(id) {
+  App.posLog = App.posLog.filter(p => p.id !== id);
+  renderPositionLog();
+}
+
+function diffSelectedPositions() {
+  const sel = App.posLog.filter(p => p.selected);
+  if (sel.length !== 2) { alert('Check exactly 2 entries to diff them.'); return; }
+  const [a, b] = sel;
+  const fmt = (n) => (n >= 0 ? '+' : '') + n.toFixed(3);
+  const out =
+    `Diff: "${a.label}"  →  "${b.label}"\n` +
+    `Machine: ΔX=${fmt(b.mcs.x - a.mcs.x)}  ΔY=${fmt(b.mcs.y - a.mcs.y)}  ΔZ=${fmt(b.mcs.z - a.mcs.z)}\n` +
+    `Job:     ΔX=${fmt(b.wcs.x - a.wcs.x)}  ΔY=${fmt(b.wcs.y - a.wcs.y)}  ΔZ=${fmt(b.wcs.z - a.wcs.z)}`;
+  const el = document.getElementById('pos-log-diff');
+  el.textContent = out;
+  el.style.display = 'block';
+}
+
+function clearPositionLog() {
+  if (App.posLog.length && !confirm('Clear all recorded positions?')) return;
+  App.posLog = [];
+  App.posLogIdSeq = 0;
+  renderPositionLog();
+  const el = document.getElementById('pos-log-diff');
+  el.style.display = 'none';
+}
+//#endregion
+
+//#region ===== WCS / JOB ORIGINS MANAGER =====
+function refreshWCSTable() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  sendCommand('$#');
+}
+
+function renderWCSTable() {
+  const tbody = document.getElementById('wcs-tbody');
+  if (!tbody) return;
+  let h = '';
+  for (let i = 0; i < App.wcsOffsets.length; i++) {
+    const w = App.wcsOffsets[i];
+    h += `<tr>
+      <td class="wcs-slot">${w.slot}</td>
+      <td class="wcs-note"><span style="font-size:11px;">${w.note}</span></td>
+      <td>${w.x.toFixed(3)}</td><td>${w.y.toFixed(3)}</td><td>${w.z.toFixed(3)}</td>
+      <td class="wcs-acts">
+        <button onclick="gotoWCS(${i})" title="Move to this job origin position (G53 move to offset coords)">Go</button>
+        <button onclick="setWCSHere(${i})" title="Make current position this slot's job origin (G10 L20)"
+          style="color:var(--warning);">Set Here</button>
+        <button onclick="openWCSEdit(${i})" title="Enter explicit machine coordinates for this origin">Set Values</button>
+      </td>
+    </tr>`;
+  }
+  tbody.innerHTML = h;
+}
+
+function gotoWCS(idx) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  const w = App.wcsOffsets[idx];
+  // The stored values are the offset (machine coords = job 0,0,0)
+  sendCommand(`G53 G0 X${w.x.toFixed(3)} Y${w.y.toFixed(3)} Z${w.z.toFixed(3)}`);
+}
+
+function setWCSHere(idx) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  const w = App.wcsOffsets[idx];
+  if (!confirm(
+    `Set ${w.slot} job origin to current position?\n\n` +
+    `Sends: G10 L20 P${w.pNum} X0 Y0 Z0\n\n` +
+    `This makes wherever you are right now become XYZ 0,0,0 for ${w.slot}.\n` +
+    `Writes to controller EEPROM.`
+  )) return;
+  sendCommand(`G10 L20 P${w.pNum} X0 Y0 Z0`);
+  setTimeout(() => sendCommand('$#'), 300);
+}
+
+function openWCSEdit(idx) {
+  const w = App.wcsOffsets[idx];
+  App.wcsEditIdx = idx;
+  document.getElementById('wcs-edit-label').textContent = w.slot;
+  document.getElementById('wcs-edit-x').value = w.x.toFixed(3);
+  document.getElementById('wcs-edit-y').value = w.y.toFixed(3);
+  document.getElementById('wcs-edit-z').value = w.z.toFixed(3);
+  const panel = document.getElementById('wcs-edit-panel');
+  panel.classList.add('visible');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function applyWCSEdit() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.wcsEditIdx === null) return;
+  const w = App.wcsOffsets[App.wcsEditIdx];
+  const x = parseFloat(document.getElementById('wcs-edit-x').value);
+  const y = parseFloat(document.getElementById('wcs-edit-y').value);
+  const z = parseFloat(document.getElementById('wcs-edit-z').value);
+  if ([x, y, z].some(isNaN)) { alert('All three values must be valid numbers.'); return; }
+  if (!confirm(
+    `Set ${w.slot} job origin to machine position X${x.toFixed(3)} Y${y.toFixed(3)} Z${z.toFixed(3)}?\n\n` +
+    `Sends: G10 L2 P${w.pNum} X${x.toFixed(3)} Y${y.toFixed(3)} Z${z.toFixed(3)}\n` +
+    `Writes to controller EEPROM.`
+  )) return;
+  sendCommand(`G10 L2 P${w.pNum} X${x.toFixed(3)} Y${y.toFixed(3)} Z${z.toFixed(3)}`);
+  cancelWCSEdit();
+  setTimeout(() => sendCommand('$#'), 300);
+}
+
+function cancelWCSEdit() {
+  App.wcsEditIdx = null;
+  document.getElementById('wcs-edit-panel').classList.remove('visible');
+}
+
+function clearG54() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (!confirm(
+    'Reset G54 job origin to zero?\n\n' +
+    'Sends: G10 L2 P1 X0 Y0 Z0\n\n' +
+    'After homing, job position will equal machine position.\n' +
+    'Use this before starting LightBurn in Absolute Coords mode.'
+  )) return;
+  sendCommand('G10 L2 P1 X0 Y0 Z0');
+  setTimeout(() => { sendCommand('$#'); setTimeout(() => sendCommand('?'), 100); }, 200);
+}
+//#endregion
+
+//#region ===== RETURN POINTS (G28 / G30) =====
+function saveReturnPoint(num) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  const cmd = num === 1 ? 'G28.1' : 'G30.1';
+  if (!confirm(
+    `Save current machine position as Return Point ${num}?\n\n` +
+    `Sends: ${cmd}\n\n` +
+    `Current position: X${App.position.mcs.x.toFixed(3)} Y${App.position.mcs.y.toFixed(3)} Z${App.position.mcs.z.toFixed(3)}\n\n` +
+    `This overwrites any previously saved Return Point ${num}. Stored in controller EEPROM.`
+  )) return;
+  sendCommand(cmd);
+}
+
+function gotoReturnPoint(num) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  const cmd = num === 1 ? 'G28' : 'G30';
+  sendCommand(cmd);
+}
+//#endregion
+
+//#region ===== TOOL OFFSET =====
+function updateOffsetDisplay() {
+  const el = document.getElementById('offset-display');
+  const to = App.settings && App.settings.toolOffset;
+  if (!to || (to.x === 0 && to.y === 0)) {
+    el.textContent = 'Not measured yet';
+    el.style.color = 'var(--text-muted)';
+  } else {
+    const fx = (to.x >= 0 ? '+' : '') + to.x.toFixed(3);
+    const fy = (to.y >= 0 ? '+' : '') + to.y.toFixed(3);
+    el.textContent = `X: ${fx} mm   Y: ${fy} mm`;
+    el.style.color = 'var(--accent)';
+  }
+}
+
+function moveToLaserZero() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  const to = App.settings && App.settings.toolOffset;
+  if (!to || (to.x === 0 && to.y === 0)) {
+    if (!confirm('Tool offset is zero or not measured yet. Move to job origin XY anyway?')) return;
+  }
+  const x = (to ? to.x : 0).toFixed(3);
+  const y = (to ? to.y : 0).toFixed(3);
+  sendCommand(`G90 G0 X${x} Y${y}`);
+}
+
+function recordSpindlePos() {
+  App.offsetSpindlePos = { x: App.position.wcs.x, y: App.position.wcs.y };
+  document.getElementById('offset-spindle-recorded').textContent =
+    `✓ Recorded: X${App.offsetSpindlePos.x.toFixed(3)} Y${App.offsetSpindlePos.y.toFixed(3)}`;
+  document.getElementById('offset-spindle-recorded').style.color = 'var(--success)';
+  document.getElementById('offset-step1').classList.add('offset-step-done');
+  checkOffsetCalc();
+}
+
+function recordLaserPos() {
+  App.offsetLaserPos = { x: App.position.wcs.x, y: App.position.wcs.y };
+  document.getElementById('offset-laser-recorded').textContent =
+    `✓ Recorded: X${App.offsetLaserPos.x.toFixed(3)} Y${App.offsetLaserPos.y.toFixed(3)}`;
+  document.getElementById('offset-laser-recorded').style.color = 'var(--success)';
+  document.getElementById('offset-step2').classList.add('offset-step-done');
+  checkOffsetCalc();
+}
+
+function checkOffsetCalc() {
+  if (!App.offsetSpindlePos || !App.offsetLaserPos) return;
+  const dx = App.offsetLaserPos.x - App.offsetSpindlePos.x;
+  const dy = App.offsetLaserPos.y - App.offsetSpindlePos.y;
+  const fx = (dx >= 0 ? '+' : '') + dx.toFixed(3);
+  const fy = (dy >= 0 ? '+' : '') + dy.toFixed(3);
+  document.getElementById('offset-calc-display').textContent = `ΔX=${fx} mm   ΔY=${fy} mm`;
+  document.getElementById('offset-calc-row').style.display = 'flex';
+  document.getElementById('offset-calc-row').style.alignItems = 'center';
+  // Store for add button
+  App._pendingOffset = { x: dx, y: dy };
+}
+
+function addOffsetMeasurement() {
+  if (!App._pendingOffset) return;
+  App.offsetMeasurements.push({ ...App._pendingOffset });
+  App._pendingOffset = null;
+  // Reset steps
+  App.offsetSpindlePos = null;
+  App.offsetLaserPos = null;
+  document.getElementById('offset-spindle-recorded').textContent = '';
+  document.getElementById('offset-laser-recorded').textContent = '';
+  document.getElementById('offset-step1').classList.remove('offset-step-done');
+  document.getElementById('offset-step2').classList.remove('offset-step-done');
+  document.getElementById('offset-calc-row').style.display = 'none';
+  renderOffsetMeasurements();
+}
+
+function renderOffsetMeasurements() {
+  const wrap = document.getElementById('offset-meas-wrap');
+  const tbody = document.getElementById('offset-meas-tbody');
+  const avgEl = document.getElementById('offset-avg-display');
+  if (!App.offsetMeasurements.length) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  const avgX = App.offsetMeasurements.reduce((s, m) => s + m.x, 0) / App.offsetMeasurements.length;
+  const avgY = App.offsetMeasurements.reduce((s, m) => s + m.y, 0) / App.offsetMeasurements.length;
+  const fmt = (n) => (n >= 0 ? '+' : '') + n.toFixed(3);
+  avgEl.textContent = `Average: ΔX=${fmt(avgX)}  ΔY=${fmt(avgY)}`;
+  let rows = '';
+  App.offsetMeasurements.forEach((m, i) => {
+    rows += `<tr>
+      <td>${i + 1}</td>
+      <td>${fmt(m.x)}</td>
+      <td>${fmt(m.y)}</td>
+      <td class="om-acts"><button onclick="deleteOffsetMeas(${i})">✕</button></td>
+    </tr>`;
+  });
+  tbody.innerHTML = rows;
+}
+
+function deleteOffsetMeas(idx) {
+  App.offsetMeasurements.splice(idx, 1);
+  renderOffsetMeasurements();
+}
+
+function clearOffsetMeasurements() {
+  if (!confirm('Clear all offset measurements?')) return;
+  App.offsetMeasurements = [];
+  renderOffsetMeasurements();
+}
+
+function saveAverageOffset() {
+  if (!App.offsetMeasurements.length) { alert('No measurements to average.'); return; }
+  const avgX = App.offsetMeasurements.reduce((s, m) => s + m.x, 0) / App.offsetMeasurements.length;
+  const avgY = App.offsetMeasurements.reduce((s, m) => s + m.y, 0) / App.offsetMeasurements.length;
+  const fmt = (n) => (n >= 0 ? '+' : '') + n.toFixed(3);
+  if (!confirm(
+    `Save average offset as stored tool offset?\n\n` +
+    `ΔX=${fmt(avgX)} mm   ΔY=${fmt(avgY)} mm\n` +
+    `(based on ${App.offsetMeasurements.length} measurement${App.offsetMeasurements.length > 1 ? 's' : ''})\n\n` +
+    `This will update the settings and the Settings tab.`
+  )) return;
+  if (!App.settings.toolOffset) App.settings.toolOffset = {};
+  App.settings.toolOffset.x = parseFloat(avgX.toFixed(3));
+  App.settings.toolOffset.y = parseFloat(avgY.toFixed(3));
+  document.getElementById('setting-offset-x').value = App.settings.toolOffset.x;
+  document.getElementById('setting-offset-y').value = App.settings.toolOffset.y;
+  saveSettingsToEmbedded();
+  updateSettingsJSON();
+  updateOffsetDisplay();
+  alert(`Tool offset saved: ΔX=${fmt(avgX)}  ΔY=${fmt(avgY)}\n\nUse "Move Laser to Spindle Zero" to apply it.`);
+}
+//#endregion
+
+//#region ===== TOOL & LASER =====
+function selectTool(toolNum) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.activeTool === 1 && toolNum === 0 && App.laserLowActive) {
+    sendCommand('M5');
+    App.laserLowActive = false;
+  }
+  sendCommand('M6 T' + toolNum);
+  App.activeTool = toolNum;
+  updateToolUI();
+}
+
+function updateToolUI() {
+  const isLaser = App.activeTool === 1;
+  // Header badge
+  const badge = document.getElementById('header-tool-badge');
+  badge.textContent = isLaser ? 'LASER' : 'SPINDLE';
+  badge.className = 'tool-badge ' + (isLaser ? 'tool-badge-laser' : 'tool-badge-spindle');
+  // Active label
+  const lbl = document.getElementById('tool-active-label');
+  lbl.textContent = isLaser ? 'Laser (T1)' : 'Spindle (T0)';
+  lbl.style.color = isLaser ? 'var(--warning)' : 'var(--success)';
+  // Tool buttons
+  document.getElementById('tool-spindle-btn').className =
+    isLaser ? '' : 'btn-tool-spindle-active';
+  document.getElementById('tool-laser-btn').className =
+    isLaser ? 'btn-tool-laser-active' : '';
+  // Laser section enabled/disabled
+  const inner = document.getElementById('laser-inner');
+  const notice = document.getElementById('laser-disabled-notice');
+  inner.classList.toggle('laser-section-disabled', !isLaser);
+  notice.style.display = isLaser ? 'none' : '';
+  // Sync settings into laser inputs
+  if (App.settings) {
+    const ls = App.settings.laser || {};
+    const lowPct = ls.lowPowerPct || 7;
+    const highMax = ls.highPowerMaxPct || 50;
+    document.getElementById('laser-low-pct').value = lowPct;
+    document.getElementById('laser-high-pct').setAttribute('max', highMax);
+    const curHigh = parseInt(document.getElementById('laser-high-pct').value) || 30;
+    if (curHigh > highMax) document.getElementById('laser-high-pct').value = highMax;
+  }
+  updatePWMHints();
+}
+
+function updatePWMHints() {
+  const lowPct  = parseInt(document.getElementById('laser-low-pct').value)  || 7;
+  const highPct = parseInt(document.getElementById('laser-high-pct').value) || 30;
+  const maxPct  = parseInt(document.getElementById('laser-high-pct').getAttribute('max')) || 50;
+  const clampedHigh = Math.min(maxPct, highPct);
+  document.getElementById('laser-low-pwm-hint').textContent =
+    '= S' + Math.round(Math.min(10, lowPct) / 100 * 255);
+  document.getElementById('laser-high-pwm-hint').textContent =
+    '= S' + Math.round(clampedHigh / 100 * 255);
+}
+
+function toggleLaserLow() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.activeTool !== 1) { alert('Switch to Laser (T1) first using the Active Tool buttons.'); return; }
+  App.laserLowActive = !App.laserLowActive;
+  const pct   = Math.min(10, Math.max(1, parseInt(document.getElementById('laser-low-pct').value) || 7));
+  const power = Math.round(pct / 100 * 255);
+  const btn   = document.getElementById('laser-low-btn');
+  const ind   = document.getElementById('laser-low-ind');
+  if (App.laserLowActive) {
+    sendCommand('G90 M3 S' + power + ' G1 F1');
+    btn.textContent = '■ Stop Low Power';
+    btn.style.background = 'var(--warning)';
+    btn.style.color = '#000';
+    ind.style.display = '';
+  } else {
+    sendCommand('M5');
+    btn.textContent = 'Fire Low Power (toggle)';
+    btn.style.background = '';
+    btn.style.color = '';
+    ind.style.display = 'none';
+  }
+}
+
+function setupHighPowerLaser() {
+  const btn = document.getElementById('laser-high-btn');
+  const fire = (e) => {
+    e.preventDefault();
+    if (!App.isConnected) return;
+    if (App.activeTool !== 1) { alert('Switch to Laser (T1) first.'); return; }
+    if (App.laserLowActive) { alert('Turn off low power laser before using high power.'); return; }
+    if (btn.classList.contains('firing')) return; // already firing
+    const maxPct  = parseInt(btn.getAttribute('max') ||
+      (App.settings && App.settings.laser ? App.settings.laser.highPowerMaxPct : 50)) || 50;
+    const inputPct = parseInt(document.getElementById('laser-high-pct').value) || 30;
+    const pct   = Math.min(maxPct, Math.max(1, inputPct));
+    const power = Math.round(pct / 100 * 255);
+    sendCommand('G90 M3 S' + power + ' G1 F1');
+    btn.classList.add('firing');
+    document.getElementById('laser-high-ind').style.display = '';
+  };
+  const stop = () => {
+    if (btn.classList.contains('firing')) {
+      sendCommand('M5');
+      btn.classList.remove('firing');
+      document.getElementById('laser-high-ind').style.display = 'none';
+    }
+  };
+  btn.addEventListener('mousedown',   fire);
+  btn.addEventListener('mouseup',     stop);
+  btn.addEventListener('mouseleave',  stop);
+  btn.addEventListener('touchstart',  fire, { passive: false });
+  btn.addEventListener('touchend',    stop);
+  btn.addEventListener('touchcancel', stop);
+  btn.addEventListener('contextmenu', (e) => { e.preventDefault(); stop(); });
+}
+//#endregion
+
+//#region ===== ALARM CLEAR =====
+function clearAlarm() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  sendCommand('$X');
+  setTimeout(() => sendCommand('?'), 200);
+}
+//#endregion
+
+//#region ===== SHARED PROBE UTILITIES =====
+// These utilities are used by all probe operations (Cylinder, Hole, Corner, etc.)
+
+// Command ID counter for debug logging
+let probeCommandId = 0;
+
+// Create probe helpers bound to current settings
+function createProbeHelpers() {
+  const timeout = (App.settings.probe.timeout || 30) * 1000;
+  
+  // Send command and wait for ok - sets up listener BEFORE sending
+  const sendAndWait = (cmd) => new Promise((resolve, reject) => {
+    const myId = ++probeCommandId;
+    console.log('[' + myId + '] Sending: ' + cmd);
+
+    const timer = setTimeout(() => {
+      App.ws.removeEventListener('message', h);
+      reject(new Error('Timeout waiting for ok on: ' + cmd));
+    }, timeout);
+
+    let responses = '';  // Accumulate all responses
+
+    const h = async (ev) => {
+      let d = ev.data;
+      if (d instanceof Blob) d = await d.text();
+      if (d.includes('PING')) return;
+      console.log('[' + myId + '] Received: ' + d.trim());
+
+      responses += d;  // Accumulate response
+
+      if (d.includes('ok')) {
+        clearTimeout(timer);
+        App.ws.removeEventListener('message', h);
+        console.log('[' + myId + '] OK received');
+        resolve(responses);  // Return accumulated responses
+      } else if (d.includes('ALARM') || d.toLowerCase().includes('error')) {
+        clearTimeout(timer);
+        App.ws.removeEventListener('message', h);
+        reject(new Error(d.trim()));
+      }
+    };
+    App.ws.addEventListener('message', h);
+    sendCommand(cmd);
+  });
+  
+  // Probe and capture result - sets up listener BEFORE sending
+  const probeAndCapture = (axis, dist, feed) => new Promise((resolve, reject) => {
+    const myId = ++probeCommandId;
+    const cmd = 'G38.2 ' + axis + dist.toFixed(3) + ' F' + feed;
+    console.log('[' + myId + '] Probe: ' + cmd);
+    
+    const timer = setTimeout(() => {
+      App.ws.removeEventListener('message', h);
+      reject(new Error('Probe timeout on: ' + cmd));
+    }, timeout);
+    
+    let prb = null;
+    let gotOk = false;
+    
+    const h = async (ev) => {
+      let d = ev.data;
+      if (d instanceof Blob) d = await d.text();
+      if (d.includes('PING')) return;
+      console.log('[' + myId + '] Received: ' + d.trim());
+      
+      const m = d.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);
+      if (m) {
+        prb = { x: parseFloat(m[1]), y: parseFloat(m[2]), z: parseFloat(m[3]), ok: m[4] === '1' };
+        console.log('[' + myId + '] PRB result:', prb);
+      }
+      if (d.includes('ok')) gotOk = true;
+      
+      if (d.includes('ALARM') || d.toLowerCase().includes('error')) {
+        clearTimeout(timer);
+        App.ws.removeEventListener('message', h);
+        reject(new Error(d.trim()));
+        return;
+      }
+      
+      if (gotOk && prb) {
+        clearTimeout(timer);
+        App.ws.removeEventListener('message', h);
+        if (prb.ok) {
+          console.log('[' + myId + '] Probe success');
+          resolve(prb);
+        } else {
+          reject(new Error('Probe did not trigger'));
+        }
+      }
+    };
+    App.ws.addEventListener('message', h);
+    sendCommand(cmd);
+  });
+  
+  // Move relative with proper sequencing
+  const moveRel = async (axis, dist) => {
+    await sendAndWait('G0 ' + axis + dist.toFixed(3));
+  };
+  
+  return { sendAndWait, probeAndCapture, moveRel };
+}
+
+// Test probe connection - shared by all probe tabs
+function testProbeConnection(probeType) {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  const statusEl = document.getElementById(probeType + '-probe-status');
+  if (!statusEl) return;
+  
+  statusEl.innerHTML = '<div class="probe-status working">Testing probe...</div>';
+  let got = false;
+  
+  const check = async (event) => {
+    let data = event.data;
+    if (data instanceof Blob) data = await data.text();
+    if (typeof data !== 'string') return;
+    if (data.startsWith('<') && data.endsWith('>')) {
+      got = true;
+      App.ws.removeEventListener('message', check);
+      if (data.includes('Pn:') && data.includes('P')) {
+        statusEl.innerHTML = '<div class="probe-status error">⚠ Probe pin ACTIVE - check if touching or wiring issue</div>';
+      } else {
+        statusEl.innerHTML = '<div class="probe-status ready">✓ Probe Ready</div>';
+      }
+    }
+  };
+  
+  App.ws.addEventListener('message', check);
+  sendCommand('?');
+  setTimeout(() => {
+    if (!got) {
+      App.ws.removeEventListener('message', check);
+      statusEl.innerHTML = '<div class="probe-status error">✗ No response</div>';
+    }
+  }, 3000);
+}
+
+// Calculate center and diameter from probe results
+function calculateProbeResults(eastX, westX, northY, southY, tipDia) {
+  const centerX = (eastX + westX) / 2;
+  const centerY = (northY + southY) / 2;
+  const diameterX = Math.abs(eastX - westX) + tipDia;
+  const diameterY = Math.abs(northY - southY) + tipDia;
+  return {
+    centerX,
+    centerY,
+    diameterX,
+    diameterY,
+    diameterAvg: (diameterX + diameterY) / 2
+  };
+}
+
+// Calculate center and diameter for HOLE (subtract tip diameter instead of add)
+function calculateHoleResults(eastX, westX, northY, southY, tipDia) {
+  const centerX = (eastX + westX) / 2;
+  const centerY = (northY + southY) / 2;
+  const diameterX = Math.abs(eastX - westX) - tipDia;  // Subtract for internal measurement
+  const diameterY = Math.abs(northY - southY) - tipDia;
+  return {
+    centerX,
+    centerY,
+    diameterX,
+    diameterY,
+    diameterAvg: (diameterX + diameterY) / 2
+  };
+}
+//#endregion
+
+//#region ===== CYLINDER PROBE =====
+const CylinderProbe = { result: null, history: [] };
+
+function updateCylProbeDistance() {
+  const dia = parseFloat(document.getElementById('cyl-diameter').value) || 25;
+  document.getElementById('cyl-probe-distance').value = (dia / 2 + 5).toFixed(1);
+}
+
+function loadCylinderPresets() {
+  const sel = document.getElementById('cyl-preset-select');
+  sel.innerHTML = '<option value="">-- Select Preset --</option>';
+  App.settings.presets.cylinder.forEach((p, i) => {
+    sel.innerHTML += '<option value="' + i + '">' + (p.name || 'Preset ' + (i+1)) + '</option>';
+  });
+}
+
+function loadCylinderPreset() {
+  const idx = parseInt(document.getElementById('cyl-preset-select').value);
+  if (isNaN(idx)) return;
+  const p = App.settings.presets.cylinder[idx];
+  if (!p) return;
+  document.getElementById('cyl-preset-name').value = p.name || '';
+  document.getElementById('cyl-diameter').value = p.diameter || 25;
+  document.getElementById('cyl-probe-distance').value = p.probeDistance || 17.5;
+  document.getElementById('cyl-probe-depth').value = p.probeDepth || 5;
+  document.getElementById('cyl-feedrate').value = p.feedrate || 100;
+}
+
+function saveCylinderPreset() {
+  const name = document.getElementById('cyl-preset-name').value.trim();
+  if (!name) { alert('Enter a preset name'); return; }
+  const preset = {
+    name: name,
+    diameter: parseFloat(document.getElementById('cyl-diameter').value) || 25,
+    probeDistance: parseFloat(document.getElementById('cyl-probe-distance').value) || 17.5,
+    probeDepth: parseFloat(document.getElementById('cyl-probe-depth').value) || 5,
+    feedrate: parseInt(document.getElementById('cyl-feedrate').value) || 100
+  };
+  const idx = App.settings.presets.cylinder.findIndex(p => p.name === name);
+  if (idx >= 0) App.settings.presets.cylinder[idx] = preset;
+  else App.settings.presets.cylinder.push(preset);
+  saveSettingsToEmbedded();
+  updateSettingsJSON();
+  loadCylinderPresets();
+  updatePresetCounts();
+  alert('Preset "' + name + '" saved!');
+}
+
+function deleteCylinderPreset() {
+  const idx = parseInt(document.getElementById('cyl-preset-select').value);
+  if (isNaN(idx)) { alert('Select a preset to delete'); return; }
+  const name = App.settings.presets.cylinder[idx].name;
+  if (confirm('Delete preset "' + name + '"?')) {
+    App.settings.presets.cylinder.splice(idx, 1);
+    saveSettingsToEmbedded();
+    updateSettingsJSON();
+    loadCylinderPresets();
+    updatePresetCounts();
+  }
+}
+
+function setCylinderZero(axis) {
+  if (!CylinderProbe.result || !App.isConnected) return;
+  if (axis === 'XY') sendCommand('G10 L20 P1 X0 Y0');
+  else sendCommand('G10 L20 P1 ' + axis + '0');
+  setTimeout(() => { sendCommand('$#'); setTimeout(() => sendCommand('?'), 100); }, 100);
+}
+
+function toggleCylRepeatability() {
+  const en = document.getElementById('cyl-repeatability-mode').checked;
+  document.getElementById('cyl-history-actions').style.display = en ? 'block' : 'none';
+  if (en) { CylinderProbe.history = []; updateCylinderHistory(); }
+}
+
+function clearCylinderHistory() {
+  CylinderProbe.history = [];
+  updateCylinderHistory();
+}
+
+function exportCylinderRepeatability() {
+  if (CylinderProbe.history.length === 0) {
+    alert('No repeatability data to export');
+    return;
+  }
+
+  const tolerance = 0.01;  // 0.01mm acceptable tolerance
+  const timestamp = new Date().toISOString();
+  const presetName = document.getElementById('cyl-preset-name').value || 'Cylinder';
+  const expDia = parseFloat(document.getElementById('cyl-diameter').value) || 0;
+
+  // Calculate statistics
+  const avgX = CylinderProbe.history.reduce((s, r) => s + r.centerX, 0) / CylinderProbe.history.length;
+  const avgY = CylinderProbe.history.reduce((s, r) => s + r.centerY, 0) / CylinderProbe.history.length;
+  const avgDiaX = CylinderProbe.history.reduce((s, r) => s + r.diameterX, 0) / CylinderProbe.history.length;
+  const avgDiaY = CylinderProbe.history.reduce((s, r) => s + r.diameterY, 0) / CylinderProbe.history.length;
+
+  const devsX = CylinderProbe.history.map(r => r.centerX - avgX);
+  const devsY = CylinderProbe.history.map(r => r.centerY - avgY);
+  const devsDiaX = CylinderProbe.history.map(r => r.diameterX - avgDiaX);
+  const devsDiaY = CylinderProbe.history.map(r => r.diameterY - avgDiaY);
+
+  const stdX = Math.sqrt(devsX.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdY = Math.sqrt(devsY.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdDiaX = Math.sqrt(devsDiaX.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdDiaY = Math.sqrt(devsDiaY.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+
+  const maxDevX = Math.max(...devsX.map(Math.abs));
+  const maxDevY = Math.max(...devsY.map(Math.abs));
+  const runout = Math.max(maxDevX, maxDevY);
+
+  // Build CSV
+  let csv = '# Cylinder Probe Repeatability Test\n';
+  csv += `# Generated: ${timestamp}\n`;
+  csv += `# Preset: ${presetName}\n`;
+  csv += `# Expected Diameter: ${expDia.toFixed(3)} mm\n`;
+  csv += `# Number of Runs: ${CylinderProbe.history.length}\n`;
+  csv += `# Tolerance: ${tolerance.toFixed(3)} mm\n\n`;
+
+  csv += '# STATISTICS SUMMARY\n';
+  csv += `Mean Center X,${avgX.toFixed(4)},mm,Std Dev,${stdX.toFixed(4)},mm,Max Dev,${maxDevX.toFixed(4)},mm\n`;
+  csv += `Mean Center Y,${avgY.toFixed(4)},mm,Std Dev,${stdY.toFixed(4)},mm,Max Dev,${maxDevY.toFixed(4)},mm\n`;
+  csv += `Mean Diameter X,${avgDiaX.toFixed(4)},mm,Std Dev,${stdDiaX.toFixed(4)},mm\n`;
+  csv += `Mean Diameter Y,${avgDiaY.toFixed(4)},mm,Std Dev,${stdDiaY.toFixed(4)},mm\n`;
+  csv += `Runout,${runout.toFixed(4)},mm\n\n`;
+
+  csv += '# PASS/FAIL ANALYSIS\n';
+  const passX = stdX <= tolerance && maxDevX <= tolerance * 2;
+  const passY = stdY <= tolerance && maxDevY <= tolerance * 2;
+  const passDiaX = stdDiaX <= tolerance;
+  const passDiaY = stdDiaY <= tolerance;
+  const passRunout = runout <= tolerance * 2;
+  csv += `Center X Repeatability,${passX ? 'PASS' : 'FAIL'},${passX ? '(within tolerance)' : '(exceeds tolerance)'}\n`;
+  csv += `Center Y Repeatability,${passY ? 'PASS' : 'FAIL'},${passY ? '(within tolerance)' : '(exceeds tolerance)'}\n`;
+  csv += `Diameter X Repeatability,${passDiaX ? 'PASS' : 'FAIL'},${passDiaX ? '(within tolerance)' : '(exceeds tolerance)'}\n`;
+  csv += `Diameter Y Repeatability,${passDiaY ? 'PASS' : 'FAIL'},${passDiaY ? '(within tolerance)' : '(exceeds tolerance)'}\n`;
+  csv += `Overall Runout,${passRunout ? 'PASS' : 'FAIL'},${passRunout ? '(within tolerance)' : '(exceeds tolerance)'}\n\n`;
+
+  csv += '# RAW DATA\n';
+  csv += 'Run,Center X (mm),Center Y (mm),Deviation X (mm),Deviation Y (mm),Diameter X (mm),Diameter Y (mm),Avg Diameter (mm)\n';
+  CylinderProbe.history.forEach((r, i) => {
+    const dx = r.centerX - avgX;
+    const dy = r.centerY - avgY;
+    csv += `${i+1},${r.centerX.toFixed(4)},${r.centerY.toFixed(4)},${(dx>=0?'+':'') + dx.toFixed(4)},${(dy>=0?'+':'') + dy.toFixed(4)},${r.diameterX.toFixed(4)},${r.diameterY.toFixed(4)},${r.diameterAvg.toFixed(4)}\n`;
+  });
+
+  // Download
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const timeStr = timestamp.replace(/:/g, '').split('.')[0];
+  a.href = url;
+  a.download = `cylinder_repeatability_${timeStr}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function updateCylinderHistory() {
+  const el = document.getElementById('cyl-history');
+  if (CylinderProbe.history.length === 0) {
+    el.innerHTML = '<p class="text-muted">No runs recorded yet.</p>';
+    return;
+  }
+
+  const tolerance = 0.01;  // 0.01mm acceptable tolerance
+
+  // Calculate statistics
+  const avgX = CylinderProbe.history.reduce((s, r) => s + r.centerX, 0) / CylinderProbe.history.length;
+  const avgY = CylinderProbe.history.reduce((s, r) => s + r.centerY, 0) / CylinderProbe.history.length;
+  const avgDiaX = CylinderProbe.history.reduce((s, r) => s + r.diameterX, 0) / CylinderProbe.history.length;
+  const avgDiaY = CylinderProbe.history.reduce((s, r) => s + r.diameterY, 0) / CylinderProbe.history.length;
+
+  const devsX = CylinderProbe.history.map(r => r.centerX - avgX);
+  const devsY = CylinderProbe.history.map(r => r.centerY - avgY);
+  const devsDiaX = CylinderProbe.history.map(r => r.diameterX - avgDiaX);
+  const devsDiaY = CylinderProbe.history.map(r => r.diameterY - avgDiaY);
+
+  const stdX = Math.sqrt(devsX.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdY = Math.sqrt(devsY.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdDiaX = Math.sqrt(devsDiaX.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+  const stdDiaY = Math.sqrt(devsDiaY.reduce((s, d) => s + d*d, 0) / CylinderProbe.history.length);
+
+  const maxDevX = Math.max(...devsX.map(Math.abs));
+  const maxDevY = Math.max(...devsY.map(Math.abs));
+  const maxDevDiaX = Math.max(...devsDiaX.map(Math.abs));
+  const maxDevDiaY = Math.max(...devsDiaY.map(Math.abs));
+
+  // Calculate runout (max deviation from center)
+  const runout = Math.max(maxDevX, maxDevY);
+
+  // Color indicator function
+  const colorIndicator = (value) => {
+    const absVal = Math.abs(value);
+    if (absVal <= tolerance) return 'color: var(--success);';
+    if (absVal <= tolerance * 2) return 'color: var(--warning);';
+    return 'color: var(--danger);';
+  };
+
+  // Statistics summary
+  let html = '<div style="margin-bottom:12px;padding:8px;background:var(--bg-tertiary);border-radius:3px;font-size:11px;">';
+  html += '<div style="display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;">';
+  html += '<span style="color:var(--text-secondary);">Mean X:</span><span>' + avgX.toFixed(3) + ' mm</span><span style="' + colorIndicator(stdX) + '">σ=' + stdX.toFixed(4) + '</span>';
+  html += '<span style="color:var(--text-secondary);">Mean Y:</span><span>' + avgY.toFixed(3) + ' mm</span><span style="' + colorIndicator(stdY) + '">σ=' + stdY.toFixed(4) + '</span>';
+  html += '<span style="color:var(--text-secondary);">Mean Ø X:</span><span>' + avgDiaX.toFixed(3) + ' mm</span><span style="' + colorIndicator(stdDiaX) + '">σ=' + stdDiaX.toFixed(4) + '</span>';
+  html += '<span style="color:var(--text-secondary);">Mean Ø Y:</span><span>' + avgDiaY.toFixed(3) + ' mm</span><span style="' + colorIndicator(stdDiaY) + '">σ=' + stdDiaY.toFixed(4) + '</span>';
+  html += '<span style="color:var(--text-secondary);">Runout:</span><span colspan="2" style="' + colorIndicator(runout) + '">' + runout.toFixed(4) + ' mm</span>';
+  html += '</div></div>';
+
+  // Data table
+  html += '<table style="width:100%;font-size:11px;border-collapse:collapse;">';
+  html += '<tr style="color:var(--text-secondary);"><th>Run</th><th>X</th><th>Y</th><th>ΔX</th><th>ΔY</th><th>Ø X</th><th>Ø Y</th></tr>';
+  CylinderProbe.history.forEach((r, i) => {
+    const dx = r.centerX - avgX, dy = r.centerY - avgY;
+    html += '<tr style="border-top:1px solid var(--border);">';
+    html += '<td style="padding:3px;">' + (i+1) + '</td>';
+    html += '<td style="padding:3px;">' + r.centerX.toFixed(3) + '</td>';
+    html += '<td style="padding:3px;">' + r.centerY.toFixed(3) + '</td>';
+    html += '<td style="padding:3px;' + colorIndicator(dx) + '">' + (dx>=0?'+':'') + dx.toFixed(4) + '</td>';
+    html += '<td style="padding:3px;' + colorIndicator(dy) + '">' + (dy>=0?'+':'') + dy.toFixed(4) + '</td>';
+    html += '<td style="padding:3px;">' + r.diameterX.toFixed(3) + '</td>';
+    html += '<td style="padding:3px;">' + r.diameterY.toFixed(3) + '</td>';
+    html += '</tr>';
+  });
+  html += '</table>';
+
+  el.innerHTML = html;
+}
+
+function displayCylinderResults(result) {
+  CylinderProbe.result = result;
+  const el = document.getElementById('cyl-results');
+  const expDia = parseFloat(document.getElementById('cyl-diameter').value) || 25;
+  const dev = result.diameterAvg - expDia;
+  el.innerHTML = '<div class="results-grid">' +
+    '<span class="label">Center X:</span><span class="value">' + result.centerX.toFixed(3) + ' mm (MCS)</span>' +
+    '<span class="label">Center Y:</span><span class="value">' + result.centerY.toFixed(3) + ' mm (MCS)</span>' +
+    '<span class="label">Diameter X:</span><span class="value">' + result.diameterX.toFixed(3) + ' mm</span>' +
+    '<span class="label">Diameter Y:</span><span class="value">' + result.diameterY.toFixed(3) + ' mm</span>' +
+    '<span class="label">Avg Diameter:</span><span class="value">' + result.diameterAvg.toFixed(3) + ' mm</span>' +
+    '<span class="label">Deviation:</span><span class="value">' + (dev>=0?'+':'') + dev.toFixed(3) + ' mm</span></div>';
+  document.getElementById('cyl-results-actions').style.display = 'flex';
+  if (document.getElementById('cyl-repeatability-mode').checked) {
+    CylinderProbe.history.push(result);
+    updateCylinderHistory();
+  }
+}
+
+async function runCylinderProbe() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+  
+  const probeDistance = parseFloat(document.getElementById('cyl-probe-distance').value);
+  const probeDepth = parseFloat(document.getElementById('cyl-probe-depth').value);
+  const feedrate = parseInt(document.getElementById('cyl-feedrate').value) || 100;
+  const feedrateSlow = App.settings.probe.feedrateSlow || 50;
+  const retract = App.settings.probe.retractDistance || 2;
+  const tipDia = App.settings.probe.tipDiameter || 2;
+  
+  const diameter = document.getElementById('cyl-diameter').value;
+  if (!confirm('Cylinder Probe\n\nDiameter: ' + diameter + ' mm\nProbe distance: ' + probeDistance + ' mm\nProbe depth: ' + probeDepth + ' mm\n\nProbe tip is above cylinder center?\n\nContinue?')) return;
+  
+  App.probeInProgress = true;
+  probeCommandId = 0;  // Reset command counter
+  const statusEl = document.getElementById('cyl-probe-status');
+  document.getElementById('cyl-run-btn').disabled = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+  const probeResults = { east: [], west: [], north: [], south: [] };
+  
+  try {
+    statusEl.innerHTML = '<div class="probe-status working">Starting probe sequence...</div>';
+    await sendAndWait('G91');
+    
+    // EAST
+    statusEl.innerHTML = '<div class="probe-status working">Probing East...</div>';
+    await moveRel('X', probeDistance);
+    await moveRel('Z', -probeDepth);
+    probeResults.east.push(await probeAndCapture('X', -probeDistance * 2, feedrate));
+    await moveRel('X', retract);
+    probeResults.east.push(await probeAndCapture('X', -(retract + 5), feedrateSlow));
+    await moveRel('X', retract);
+    await moveRel('Z', probeDepth);
+    
+    // WEST
+    statusEl.innerHTML = '<div class="probe-status working">Probing West...</div>';
+    await moveRel('X', -(probeDistance * 2 + retract));
+    await moveRel('Z', -probeDepth);
+    probeResults.west.push(await probeAndCapture('X', probeDistance * 2, feedrate));
+    await moveRel('X', -retract);
+    probeResults.west.push(await probeAndCapture('X', retract + 5, feedrateSlow));
+    
+    const eastX = (probeResults.east[0].x + probeResults.east[1].x) / 2;
+    const westX = (probeResults.west[0].x + probeResults.west[1].x) / 2;
+    const centerX = (eastX + westX) / 2;
+    console.log('X Center: ' + centerX.toFixed(3));
+    
+    await moveRel('X', -retract);
+    await moveRel('Z', probeDepth);
+    
+    statusEl.innerHTML = '<div class="probe-status working">Moving to X center...</div>';
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 X' + centerX.toFixed(3));
+    await sendAndWait('G91');
+    
+    // NORTH
+    statusEl.innerHTML = '<div class="probe-status working">Probing North...</div>';
+    await moveRel('Y', probeDistance);
+    await moveRel('Z', -probeDepth);
+    probeResults.north.push(await probeAndCapture('Y', -probeDistance * 2, feedrate));
+    await moveRel('Y', retract);
+    probeResults.north.push(await probeAndCapture('Y', -(retract + 5), feedrateSlow));
+    await moveRel('Y', retract);
+    await moveRel('Z', probeDepth);
+    
+    // SOUTH
+    statusEl.innerHTML = '<div class="probe-status working">Probing South...</div>';
+    await moveRel('Y', -(probeDistance * 2 + retract));
+    await moveRel('Z', -probeDepth);
+    probeResults.south.push(await probeAndCapture('Y', probeDistance * 2, feedrate));
+    await moveRel('Y', -retract);
+    probeResults.south.push(await probeAndCapture('Y', retract + 5, feedrateSlow));
+    
+    const northY = (probeResults.north[0].y + probeResults.north[1].y) / 2;
+    const southY = (probeResults.south[0].y + probeResults.south[1].y) / 2;
+    const centerY = (northY + southY) / 2;
+    console.log('Y Center: ' + centerY.toFixed(3));
+    
+    await moveRel('Y', -retract);
+    await moveRel('Z', probeDepth);
+    
+    statusEl.innerHTML = '<div class="probe-status working">Moving to center...</div>';
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 X' + centerX.toFixed(3) + ' Y' + centerY.toFixed(3));
+    
+    const result = calculateProbeResults(eastX, westX, northY, southY, tipDia);
+    displayCylinderResults(result);
+    statusEl.innerHTML = '<div class="probe-status ready">✓ Complete! At cylinder center.</div>';
+    
+  } catch (err) {
+    console.error('Probe error:', err);
+    statusEl.innerHTML = '<div class="probe-status error">✗ Failed: ' + err.message + '</div>';
+    try { sendCommand('G91 G0 Z10'); sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+    document.getElementById('cyl-run-btn').disabled = false;
+  }
+}
+//#endregion
+
+//#region ===== HOLE PROBE =====
+const HoleProbe = { result: null, history: [] };
+
+function updateHoleProbeDistance() {
+  const dia = parseFloat(document.getElementById('hole-diameter').value) || 20;
+  document.getElementById('hole-probe-distance').value = (dia / 2 + 2).toFixed(1);
+}
+
+function updateHoleTipDiameter() {
+  document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
+}
+
+function loadHolePresets() {
+  const sel = document.getElementById('hole-preset-select');
+  sel.innerHTML = '<option value="">-- Select Preset --</option>';
+  App.settings.presets.hole.forEach((p, i) => {
+    sel.innerHTML += '<option value="' + i + '">' + (p.name || 'Preset ' + (i+1)) + '</option>';
+  });
+}
+
+function loadHolePreset() {
+  const idx = parseInt(document.getElementById('hole-preset-select').value);
+  if (isNaN(idx)) return;
+  const p = App.settings.presets.hole[idx];
+  if (!p) return;
+  document.getElementById('hole-preset-name').value = p.name || '';
+  document.getElementById('hole-diameter').value = p.diameter || 20;
+  document.getElementById('hole-probe-distance').value = p.probeDistance || 12;
+  document.getElementById('hole-feedrate').value = p.feedrate || 100;
+}
+
+function saveHolePreset() {
+  const name = document.getElementById('hole-preset-name').value.trim();
+  if (!name) { alert('Enter a preset name'); return; }
+  const preset = {
+    name: name,
+    diameter: parseFloat(document.getElementById('hole-diameter').value) || 20,
+    probeDistance: parseFloat(document.getElementById('hole-probe-distance').value) || 12,
+    feedrate: parseInt(document.getElementById('hole-feedrate').value) || 100
+  };
+  const idx = App.settings.presets.hole.findIndex(p => p.name === name);
+  if (idx >= 0) App.settings.presets.hole[idx] = preset;
+  else App.settings.presets.hole.push(preset);
+  saveSettingsToEmbedded();
+  updateSettingsJSON();
+  loadHolePresets();
+  updatePresetCounts();
+  alert('Preset "' + name + '" saved!');
+}
+
+function deleteHolePreset() {
+  const idx = parseInt(document.getElementById('hole-preset-select').value);
+  if (isNaN(idx)) { alert('Select a preset to delete'); return; }
+  const name = App.settings.presets.hole[idx].name;
+  if (confirm('Delete preset "' + name + '"?')) {
+    App.settings.presets.hole.splice(idx, 1);
+    saveSettingsToEmbedded();
+    updateSettingsJSON();
+    loadHolePresets();
+    updatePresetCounts();
+  }
+}
+
+function setHoleZero(axis) {
+  if (!HoleProbe.result || !App.isConnected) return;
+  if (axis === 'XY') sendCommand('G10 L20 P1 X0 Y0');
+  else sendCommand('G10 L20 P1 ' + axis + '0');
+  setTimeout(() => { sendCommand('$#'); setTimeout(() => sendCommand('?'), 100); }, 100);
+}
+
+function toggleHoleRepeatability() {
+  const en = document.getElementById('hole-repeatability-mode').checked;
+  document.getElementById('hole-history-actions').style.display = en ? 'block' : 'none';
+  if (en) { HoleProbe.history = []; updateHoleHistory(); }
+}
+
+function clearHoleHistory() {
+  HoleProbe.history = [];
+  updateHoleHistory();
+}
+
+function updateHoleHistory() {
+  const el = document.getElementById('hole-history');
+  if (HoleProbe.history.length === 0) {
+    el.innerHTML = '<p class="text-muted">No runs recorded yet.</p>';
+    return;
+  }
+  const avgX = HoleProbe.history.reduce((s, r) => s + r.centerX, 0) / HoleProbe.history.length;
+  const avgY = HoleProbe.history.reduce((s, r) => s + r.centerY, 0) / HoleProbe.history.length;
+  let html = '<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr style="color:var(--text-secondary);"><th>Run</th><th>X</th><th>Y</th><th>ΔX</th><th>ΔY</th></tr>';
+  HoleProbe.history.forEach((r, i) => {
+    const dx = r.centerX - avgX, dy = r.centerY - avgY;
+    html += '<tr><td>' + (i+1) + '</td><td>' + r.centerX.toFixed(3) + '</td><td>' + r.centerY.toFixed(3) + '</td><td>' + (dx>=0?'+':'') + dx.toFixed(3) + '</td><td>' + (dy>=0?'+':'') + dy.toFixed(3) + '</td></tr>';
+  });
+  html += '</table>';
+  el.innerHTML = html;
+}
+
+function displayHoleResults(result) {
+  HoleProbe.result = result;
+  const el = document.getElementById('hole-results');
+  const expDia = parseFloat(document.getElementById('hole-diameter').value) || 20;
+  const dev = result.diameterAvg - expDia;
+  el.innerHTML = '<div class="results-grid">' +
+    '<span class="label">Center X:</span><span class="value">' + result.centerX.toFixed(3) + ' mm (MCS)</span>' +
+    '<span class="label">Center Y:</span><span class="value">' + result.centerY.toFixed(3) + ' mm (MCS)</span>' +
+    '<span class="label">Diameter X:</span><span class="value">' + result.diameterX.toFixed(3) + ' mm</span>' +
+    '<span class="label">Diameter Y:</span><span class="value">' + result.diameterY.toFixed(3) + ' mm</span>' +
+    '<span class="label">Avg Diameter:</span><span class="value">' + result.diameterAvg.toFixed(3) + ' mm</span>' +
+    '<span class="label">Deviation:</span><span class="value">' + (dev>=0?'+':'') + dev.toFixed(3) + ' mm</span></div>';
+  document.getElementById('hole-results-actions').style.display = 'flex';
+  if (document.getElementById('hole-repeatability-mode').checked) {
+    HoleProbe.history.push(result);
+    updateHoleHistory();
+  }
+}
+
+async function runHoleProbe() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+  
+  const probeDistance = parseFloat(document.getElementById('hole-probe-distance').value);
+  const feedrate = parseInt(document.getElementById('hole-feedrate').value) || 100;
+  const feedrateSlow = App.settings.probe.feedrateSlow || 50;
+  const retract = App.settings.probe.retractDistance || 2;
+  const tipDia = App.settings.probe.tipDiameter || 2;
+  
+  const diameter = document.getElementById('hole-diameter').value;
+  if (!confirm('Hole Probe\n\nApprox diameter: ' + diameter + ' mm\nProbe distance: ' + probeDistance + ' mm\n\nProbe tip is INSIDE hole near center?\n\nContinue?')) return;
+  
+  App.probeInProgress = true;
+  probeCommandId = 0;
+  const statusEl = document.getElementById('hole-probe-status');
+  document.getElementById('hole-run-btn').disabled = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+  const probeResults = { east: [], west: [], north: [], south: [] };
+  
+  try {
+    statusEl.innerHTML = '<div class="probe-status working">Starting hole probe...</div>';
+    await sendAndWait('G91');
+    
+    // HOLE PROBE: Start from inside, probe OUTWARD to walls
+    // EAST (+X direction)
+    statusEl.innerHTML = '<div class="probe-status working">Probing East wall...</div>';
+    probeResults.east.push(await probeAndCapture('X', probeDistance, feedrate));
+    await moveRel('X', -retract);
+    probeResults.east.push(await probeAndCapture('X', retract + 3, feedrateSlow));
+    const eastX = (probeResults.east[0].x + probeResults.east[1].x) / 2;
+
+    // Retract and move to opposite side using absolute positioning
+    await moveRel('X', -retract);
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 X' + (eastX - probeDistance).toFixed(3));  // Move to West side
+    await sendAndWait('G91');
+
+    // WEST (-X direction) - probe outward (West)
+    statusEl.innerHTML = '<div class="probe-status working">Probing West wall...</div>';
+    probeResults.west.push(await probeAndCapture('X', -probeDistance, feedrate));
+    await moveRel('X', retract);
+    probeResults.west.push(await probeAndCapture('X', -(retract + 3), feedrateSlow));
+    const westX = (probeResults.west[0].x + probeResults.west[1].x) / 2;
+
+    const centerX = (eastX + westX) / 2;
+    console.log('X Center: ' + centerX.toFixed(3) + ' (East: ' + eastX.toFixed(3) + ', West: ' + westX.toFixed(3) + ')');
+
+    // Move to X center
+    statusEl.innerHTML = '<div class="probe-status working">Moving to X center...</div>';
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 X' + centerX.toFixed(3));
+    await sendAndWait('G91');
+    
+    // NORTH (+Y direction)
+    statusEl.innerHTML = '<div class="probe-status working">Probing North wall...</div>';
+    probeResults.north.push(await probeAndCapture('Y', probeDistance, feedrate));
+    await moveRel('Y', -retract);
+    probeResults.north.push(await probeAndCapture('Y', retract + 3, feedrateSlow));
+    const northY = (probeResults.north[0].y + probeResults.north[1].y) / 2;
+
+    // Retract and move to opposite side using absolute positioning
+    await moveRel('Y', -retract);
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 Y' + (northY - probeDistance).toFixed(3));  // Move to South side
+    await sendAndWait('G91');
+
+    // SOUTH (-Y direction) - probe outward (South)
+    statusEl.innerHTML = '<div class="probe-status working">Probing South wall...</div>';
+    probeResults.south.push(await probeAndCapture('Y', -probeDistance, feedrate));
+    await moveRel('Y', retract);
+    probeResults.south.push(await probeAndCapture('Y', -(retract + 3), feedrateSlow));
+    const southY = (probeResults.south[0].y + probeResults.south[1].y) / 2;
+
+    const centerY = (northY + southY) / 2;
+    console.log('Y Center: ' + centerY.toFixed(3) + ' (North: ' + northY.toFixed(3) + ', South: ' + southY.toFixed(3) + ')');
+    
+    // Move to true center
+    statusEl.innerHTML = '<div class="probe-status working">Moving to hole center...</div>';
+    await sendAndWait('G90');
+    await sendAndWait('G53 G0 X' + centerX.toFixed(3) + ' Y' + centerY.toFixed(3));
+    
+    const result = calculateHoleResults(eastX, westX, northY, southY, tipDia);
+    displayHoleResults(result);
+    statusEl.innerHTML = '<div class="probe-status ready">✓ Complete! At hole center.</div>';
+    
+  } catch (err) {
+    console.error('Probe error:', err);
+    statusEl.innerHTML = '<div class="probe-status error">✗ Failed: ' + err.message + '</div>';
+    try { sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+    document.getElementById('hole-run-btn').disabled = false;
+  }
+}
+//#endregion
+
+//#region ===== CORNER PROBE =====
+const CornerProbe = { result: null };
+
+function loadCornerPresets() {
+  const sel = document.getElementById('corner-preset-select');
+  sel.innerHTML = '<option value="">-- Select Preset --</option>';
+  App.settings.presets.corner.forEach((p, i) => {
+    sel.innerHTML += '<option value="' + i + '">' + (p.name || 'Preset ' + (i+1)) + '</option>';
+  });
+}
+
+function loadCornerPreset() {
+  const idx = parseInt(document.getElementById('corner-preset-select').value);
+  if (isNaN(idx)) return;
+  const p = App.settings.presets.corner[idx];
+  if (!p) return;
+  document.getElementById('corner-preset-name').value = p.name || '';
+  document.getElementById('corner-location').value = p.cornerLocation || 'SW';
+  document.getElementById('corner-type').value = p.cornerType || 'outside';
+  document.getElementById('corner-start-dist').value = p.startDistance || 5;
+  document.getElementById('corner-travel-dist').value = p.travelDistance || 10;
+  document.getElementById('corner-feedrate').value = p.feedrate || 100;
+  document.getElementById('corner-move-to-corner').checked = p.moveToCorner !== false;
+  document.getElementById('corner-z-safe').value = p.zSafe || 10;
+}
+
+function saveCornerPreset() {
+  const name = document.getElementById('corner-preset-name').value.trim();
+  if (!name) { alert('Enter a preset name'); return; }
+  const preset = {
+    name: name,
+    cornerLocation: document.getElementById('corner-location').value,
+    cornerType: document.getElementById('corner-type').value,
+    startDistance: parseFloat(document.getElementById('corner-start-dist').value) || 5,
+    travelDistance: parseFloat(document.getElementById('corner-travel-dist').value) || 10,
+    feedrate: parseInt(document.getElementById('corner-feedrate').value) || 100,
+    moveToCorner: document.getElementById('corner-move-to-corner').checked,
+    zSafe: parseFloat(document.getElementById('corner-z-safe').value) || 10
+  };
+  const idx = App.settings.presets.corner.findIndex(p => p.name === name);
+  if (idx >= 0) App.settings.presets.corner[idx] = preset;
+  else App.settings.presets.corner.push(preset);
+  saveSettingsToEmbedded();
+  updateSettingsJSON();
+  loadCornerPresets();
+  updatePresetCounts();
+  alert('Preset "' + name + '" saved!');
+}
+
+function deleteCornerPreset() {
+  const idx = parseInt(document.getElementById('corner-preset-select').value);
+  if (isNaN(idx)) { alert('Select a preset to delete'); return; }
+  const name = App.settings.presets.corner[idx].name;
+  if (confirm('Delete preset "' + name + '"?')) {
+    App.settings.presets.corner.splice(idx, 1);
+    saveSettingsToEmbedded();
+    updateSettingsJSON();
+    loadCornerPresets();
+    updatePresetCounts();
+  }
+}
+
+function setCornerZero(axis) {
+  if (!CornerProbe.result || !App.isConnected) return;
+  if (axis === 'XY') sendCommand('G10 L20 P1 X0 Y0');
+  else sendCommand('G10 L20 P1 ' + axis + '0');
+  setTimeout(() => { sendCommand('$#'); setTimeout(() => sendCommand('?'), 100); }, 100);
+}
+
+function displayCornerResults(result) {
+  CornerProbe.result = result;
+  const el = document.getElementById('corner-results');
+  el.innerHTML = '<div class="results-grid">' +
+    '<span class="label">Corner X:</span><span class="value">' + result.cornerX.toFixed(3) + ' mm (MCS)</span>' +
+    '<span class="label">Corner Y:</span><span class="value">' + result.cornerY.toFixed(3) + ' mm (MCS)</span>' +
+    '<span class="label">Edge 1 (X):</span><span class="value">' + result.edge1.toFixed(3) + ' mm</span>' +
+    '<span class="label">Edge 2 (Y):</span><span class="value">' + result.edge2.toFixed(3) + ' mm</span></div>';
+  document.getElementById('corner-results-actions').style.display = 'flex';
+}
+
+async function runCornerProbe() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+
+  // Get settings from UI
+  const cornerLoc = document.getElementById('corner-location').value; // SW, SE, NW, NE
+  const cornerType = document.getElementById('corner-type').value; // outside or inside
+  const startDist = parseFloat(document.getElementById('corner-start-dist').value);
+  const travelDist = parseFloat(document.getElementById('corner-travel-dist').value);
+  const feedrate = parseInt(document.getElementById('corner-feedrate').value) || 100;
+  const feedrateSlow = App.settings.probe.feedrateSlow || 50;
+  const retract = App.settings.probe.retractDistance || 2;
+  const tipDia = App.settings.probe.tipDiameter || 2;
+  const moveToCorner = document.getElementById('corner-move-to-corner').checked;
+  const zSafe = parseFloat(document.getElementById('corner-z-safe').value);
+
+  // Sanity check
+  if (travelDist < startDist) {
+    alert('Warning: Travel distance should be at least equal to start distance!');
+    return;
+  }
+
+  // Define probe directions based on corner location (SW, SE, NW, NE)
+  // Format: first probe direction, second probe direction
+  const cornerDefs = {
+    'SW': { probe1: '+X', probe2: '+Y', desc: 'Southwest (Bottom-Left)' },
+    'SE': { probe1: '-X', probe2: '+Y', desc: 'Southeast (Bottom-Right)' },
+    'NW': { probe1: '+X', probe2: '-Y', desc: 'Northwest (Top-Left)' },
+    'NE': { probe1: '-X', probe2: '-Y', desc: 'Northeast (Top-Right)' }
+  };
+
+  const corner = cornerDefs[cornerLoc];
+  if (!corner) { alert('Invalid corner location'); return; }
+
+  if (!confirm(`Corner Probe\n\nLocation: ${corner.desc}\nType: ${cornerType}\nStart Distance: ${startDist}mm\nTravel Distance: ${travelDist}mm\n\nProbe positioned at (A), ${startDist}mm from each wall?\nZ at correct height?\n\nContinue?`)) return;
+
+  App.probeInProgress = true;
+  probeCommandId = 0;
+  const statusEl = document.getElementById('corner-probe-status');
+  document.getElementById('corner-run-btn').disabled = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+
+  try {
+    statusEl.innerHTML = '<div class="probe-status working">Starting corner probe...</div>';
+    await sendAndWait('G91');
+
+    // STEP 7: Probe first wall (direction 1)
+    statusEl.innerHTML = '<div class="probe-status working">Probing first wall...</div>';
+    const axis1 = corner.probe1.charAt(1); // 'X' or 'Y'
+    const dir1 = corner.probe1.charAt(0) === '+' ? 1 : -1;
+
+    const probe1a = await probeAndCapture(axis1, dir1 * startDist, feedrate);
+    await moveRel(axis1, -dir1 * retract);
+    const probe1b = await probeAndCapture(axis1, dir1 * (retract + 3), feedrateSlow);
+    const wall1Pos = (probe1a[axis1.toLowerCase()] + probe1b[axis1.toLowerCase()]) / 2;
+    console.log(`Wall 1 (${axis1}): ${wall1Pos.toFixed(3)}`);
+
+    // Return to position (A)
+    await moveRel(axis1, -dir1 * retract);
+
+    // STEP 8: Move from (A) to (B) - perpendicular to first wall, AWAY from second wall
+    statusEl.innerHTML = '<div class="probe-status working">Moving to position (B)...</div>';
+    const axis2 = corner.probe2.charAt(1); // 'X' or 'Y'
+    const dir2 = corner.probe2.charAt(0) === '+' ? 1 : -1;
+    await moveRel(axis2, -dir2 * travelDist);  // Move OPPOSITE of probe direction
+
+    // STEP 9: Move from (B) to (C) - past first wall by startDist
+    statusEl.innerHTML = '<div class="probe-status working">Moving to position (C)...</div>';
+    await moveRel(axis1, dir1 * (startDist * 2));
+
+    // STEP 10: Probe second wall (direction 4)
+    statusEl.innerHTML = '<div class="probe-status working">Probing second wall...</div>';
+    const probe2a = await probeAndCapture(axis2, dir2 * (travelDist + startDist), feedrate);
+    await moveRel(axis2, -dir2 * retract);
+    const probe2b = await probeAndCapture(axis2, dir2 * (retract + 3), feedrateSlow);
+    const wall2Pos = (probe2a[axis2.toLowerCase()] + probe2b[axis2.toLowerCase()]) / 2;
+    console.log(`Wall 2 (${axis2}): ${wall2Pos.toFixed(3)}`);
+
+    // Return to position (C)
+    await moveRel(axis2, -dir2 * retract);
+
+    // Calculate corner position (accounting for probe tip diameter)
+    // For outside corner, the corner is tipDia/2 further in each direction
+    const cornerPos = {};
+    cornerPos[axis1.toLowerCase()] = wall1Pos + dir1 * (tipDia / 2);
+    cornerPos[axis2.toLowerCase()] = wall2Pos + dir2 * (tipDia / 2);
+
+    // STEP 11: Optionally move to corner (leave Z at safe height for tool change)
+    if (moveToCorner) {
+      statusEl.innerHTML = '<div class="probe-status working">Moving to corner at safe Z height...</div>';
+      // Raise Z to safe height (relative)
+      await moveRel('Z', zSafe);
+      // Move to corner XY (absolute machine coordinates)
+      await sendAndWait('G90');
+      await sendAndWait(`G53 G0 X${cornerPos.x.toFixed(3)} Y${cornerPos.y.toFixed(3)}`);
+      // Stay at safe Z height - ready for tool change and manual Z zero setting
+    }
+
+    await sendAndWait('G90');
+
+    const result = {
+      cornerX: cornerPos.x,
+      cornerY: cornerPos.y,
+      edge1: wall1Pos,
+      edge2: wall2Pos
+    };
+    displayCornerResults(result);
+    statusEl.innerHTML = '<div class="probe-status ready">✓ Complete! Walls measured.</div>';
+
+  } catch (err) {
+    console.error('Probe error:', err);
+    statusEl.innerHTML = '<div class="probe-status error">✗ Failed: ' + err.message + '</div>';
+    try { sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+    document.getElementById('corner-run-btn').disabled = false;
+  }
+}
+
+//#region ===== SIDE PROBE =====
+const SideProbe = {
+  point1: null,  // { x, y, z, measured: number }
+  point2: null,
+  direction: null,  // '+X', '-X', '+Y', '-Y'
+  lastDifference: null,  // Track previous difference for comparison
+  lastProbeTime: null  // Timestamp of last probe
+};
+
+function updateSideProbeButtons() {
+  const hasPoint1 = SideProbe.point1 !== null;
+  const hasPoint2 = SideProbe.point2 !== null;
+
+  const btnPoint1 = document.getElementById('btn-side-set-point1');
+  const btnPoint2 = document.getElementById('btn-side-set-point2');
+  const btnReprobe = document.getElementById('btn-side-reprobe-point2');
+  const btnBoth = document.getElementById('btn-side-probe-both');
+  const btnClear = document.getElementById('btn-side-clear');
+
+  // Fresh start: Point 1 is the next action
+  if (!hasPoint1) {
+    btnPoint1.disabled = false;
+    btnPoint1.classList.add('btn-primary'); // Highlighted
+    btnPoint2.disabled = true;
+    btnPoint2.classList.remove('btn-primary');
+    btnReprobe.disabled = true;
+    btnReprobe.classList.remove('btn-primary');
+    btnBoth.disabled = true;
+    btnBoth.classList.remove('btn-primary');
+    btnClear.disabled = true;
+  }
+  // Point 1 set: Point 2 is the next action
+  else if (!hasPoint2) {
+    btnPoint1.disabled = false;
+    btnPoint1.classList.remove('btn-primary'); // De-emphasized
+    btnPoint2.disabled = false;
+    btnPoint2.classList.add('btn-primary'); // Highlighted
+    btnReprobe.disabled = true;
+    btnReprobe.classList.remove('btn-primary');
+    btnBoth.disabled = true;
+    btnBoth.classList.remove('btn-primary');
+    btnClear.disabled = false;
+  }
+  // Both points set: Re-Probe and Probe Both are next actions
+  else {
+    btnPoint1.disabled = false;
+    btnPoint1.classList.remove('btn-primary'); // De-emphasized
+    btnPoint2.disabled = false;
+    btnPoint2.classList.remove('btn-primary'); // De-emphasized
+    btnReprobe.disabled = false;
+    btnReprobe.classList.add('btn-primary'); // Highlighted
+    btnBoth.disabled = false;
+    btnBoth.classList.add('btn-primary'); // Highlighted
+    btnClear.disabled = false;
+  }
+}
+
+function clearSidePoints() {
+  SideProbe.point1 = null;
+  SideProbe.point2 = null;
+  SideProbe.direction = null;
+  SideProbe.lastDifference = null;
+  SideProbe.lastProbeTime = null;
+
+  document.getElementById('side-point1-status').textContent = 'Not Set';
+  document.getElementById('side-point1-status').style.color = '#999';
+  document.getElementById('side-point1-coords').textContent = '';
+
+  document.getElementById('side-point2-status').textContent = 'Not Set';
+  document.getElementById('side-point2-status').style.color = '#999';
+  document.getElementById('side-point2-coords').textContent = '';
+
+  document.getElementById('side-results').textContent = 'Ready to probe. Manually jog to first point and click "Set Point 1 & Probe".';
+
+  updateSideProbeButtons();
+}
+
+async function setSidePoint1AndProbe() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+
+  const direction = document.getElementById('side-probe-direction').value; // '+X', '-X', '+Y', '-Y'
+  const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
+  const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
+  const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+  const retract = App.settings.probe.retractDistance || 2;
+
+  if (!confirm(`Set Point 1 & Probe\n\nDirection: ${direction}\nProbe Distance: ${probeDistance}mm\n\nProbe positioned approximately ${probeDistance}mm from edge?\nContinue?`)) return;
+
+  App.probeInProgress = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+
+  try {
+    // Get current position
+    await sendAndWait('?');
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const currentPos = { x: App.position.mcs.x, y: App.position.mcs.y, z: App.position.mcs.z };
+
+    // Perform double-probe sequence
+    await sendAndWait('G91');
+    const axis = direction.charAt(1); // 'X' or 'Y'
+    const dir = direction.charAt(0) === '+' ? 1 : -1;
+
+    const probe1 = await probeAndCapture(axis, dir * probeDistance, feedrate);
+    await moveRel(axis, -dir * retract); // Retract
+    const probe2 = await probeAndCapture(axis, dir * (retract + 3), feedrateSlow); // Slow probe
+    const measured = (probe1[axis.toLowerCase()] + probe2[axis.toLowerCase()]) / 2;
+    await moveRel(axis, -dir * retract); // Return to original position
+    await sendAndWait('G90');
+
+    // Store Point 1
+    SideProbe.point1 = {
+      x: currentPos.x,
+      y: currentPos.y,
+      z: currentPos.z,
+      measured: measured
+    };
+    SideProbe.direction = direction;
+
+    // Update UI
+    document.getElementById('side-point1-status').textContent = `Set (${direction})`;
+    document.getElementById('side-point1-status').style.color = '#4CAF50';
+    document.getElementById('side-point1-coords').textContent = `MCS: X${currentPos.x.toFixed(3)} Y${currentPos.y.toFixed(3)} Z${currentPos.z.toFixed(3)}`;
+
+    document.getElementById('side-results').textContent =
+      `Point 1 Set:\nPosition: X${currentPos.x.toFixed(3)} Y${currentPos.y.toFixed(3)}\nMeasured (${axis}): ${measured.toFixed(3)} mm\n\nManually jog to Point 2 and click "Set Point 2 & Probe".`;
+
+    updateSideProbeButtons();
+
+  } catch (err) {
+    console.error('Probe error:', err);
+    alert('Probe failed: ' + err.message);
+    try { sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+  }
+}
+
+async function setSidePoint2AndProbe() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+  if (!SideProbe.point1) { alert('Point 1 not set'); return; }
+
+  const direction = SideProbe.direction;
+  const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
+  const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
+  const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+  const retract = App.settings.probe.retractDistance || 2;
+
+  // Get current position for sanity check - must use sendAndWait to ensure position is updated
+  const { sendAndWait: sendAndWaitTemp } = createProbeHelpers();
+  await sendAndWaitTemp('?');
+  await new Promise(resolve => setTimeout(resolve, 200)); // Extra time for position update
+  const currentPos = { x: App.position.mcs.x, y: App.position.mcs.y, z: App.position.mcs.z };
+
+  // Sanity check: user should move along the perpendicular axis, not the probe direction
+  const probeAxis = direction.charAt(1); // 'X' or 'Y' - the axis we're probing toward
+  const travelAxis = probeAxis === 'X' ? 'Y' : 'X'; // The axis we should move along
+  const probeAxisDiff = Math.abs(currentPos[probeAxis.toLowerCase()] - SideProbe.point1[probeAxis.toLowerCase()]);
+  const travelAxisDiff = Math.abs(currentPos[travelAxis.toLowerCase()] - SideProbe.point1[travelAxis.toLowerCase()]);
+
+  // Check that we moved at least 5mm along the travel axis (perpendicular to probe direction)
+  if (travelAxisDiff < 5) {
+    alert(`Warning: Point 2 must be at least 5mm away from Point 1 along ${travelAxis} axis.\nCurrent distance: ${travelAxisDiff.toFixed(2)}mm\n\n(You should move along ${travelAxis}, not ${probeAxis})`);
+    return;
+  }
+
+  // Warn if probe axis changed too much (should stay roughly same distance from edge)
+  if (probeAxisDiff > 1) {
+    if (!confirm(`Warning: ${probeAxis} axis has changed by ${probeAxisDiff.toFixed(2)}mm.\nFor accurate alignment measurement, you should only move along ${travelAxis} axis.\nContinue anyway?`)) {
+      return;
+    }
+  }
+
+  if (!confirm(`Set Point 2 & Probe\n\nDirection: ${direction}\nProbe Distance: ${probeDistance}mm\n\nProbe positioned approximately ${probeDistance}mm from edge?\nContinue?`)) return;
+
+  App.probeInProgress = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+
+  try {
+    // Perform double-probe sequence
+    await sendAndWait('G91');
+    const axis = probeAxis; // Use probeAxis from sanity check above
+    const dir = direction.charAt(0) === '+' ? 1 : -1;
+
+    const probe1 = await probeAndCapture(axis, dir * probeDistance, feedrate);
+    await moveRel(axis, -dir * retract); // Retract
+    const probe2 = await probeAndCapture(axis, dir * (retract + 3), feedrateSlow); // Slow probe
+    const measured = (probe1[axis.toLowerCase()] + probe2[axis.toLowerCase()]) / 2;
+    await moveRel(axis, -dir * retract); // Return to original position
+    await sendAndWait('G90');
+
+    // Store Point 2
+    SideProbe.point2 = {
+      x: currentPos.x,
+      y: currentPos.y,
+      z: currentPos.z,
+      measured: measured
+    };
+
+    // Update UI
+    document.getElementById('side-point2-status').textContent = `Set (${direction})`;
+    document.getElementById('side-point2-status').style.color = '#4CAF50';
+    document.getElementById('side-point2-coords').textContent = `MCS: X${currentPos.x.toFixed(3)} Y${currentPos.y.toFixed(3)} Z${currentPos.z.toFixed(3)}`;
+
+    // Calculate and display results
+    displaySideProbeResults();
+
+    updateSideProbeButtons();
+
+  } catch (err) {
+    console.error('Probe error:', err);
+    alert('Probe failed: ' + err.message);
+    try { sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+  }
+}
+
+async function reprobeSidePoint2() {
+  // Same as setSidePoint2AndProbe but keeps existing Point 2 position
+  await setSidePoint2AndProbe();
+}
+
+async function probeBothSidePoints() {
+  if (!App.isConnected) { alert('Not connected'); return; }
+  if (App.probeInProgress) { alert('Probe already running'); return; }
+  if (!SideProbe.point1 || !SideProbe.point2) { alert('Both points must be set first'); return; }
+
+  const direction = SideProbe.direction;
+  const probeDistance = parseFloat(document.getElementById('side-probe-distance').value);
+  const feedrate = parseInt(document.getElementById('side-probe-feedrate').value);
+  const feedrateSlow = parseInt(document.getElementById('side-probe-feedrate-slow').value);
+  const retract = App.settings.probe.retractDistance || 2;
+  const raiseZ = document.getElementById('side-raise-z').checked;
+  const zSafe = parseFloat(document.getElementById('side-z-safe').value);
+
+  if (!confirm(`Probe Both Points\n\nThis will automatically move to Point 1, probe, then move to Point 2 and probe.\n\nDirection: ${direction}\nProbe Distance: ${probeDistance}mm\nRaise Z: ${raiseZ ? 'Yes (' + zSafe + 'mm)' : 'No'}\n\nContinue?`)) return;
+
+  App.probeInProgress = true;
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+
+  try {
+    const axis = direction.charAt(1); // 'X' or 'Y'
+    const dir = direction.charAt(0) === '+' ? 1 : -1;
+
+    // Move to Point 1 (with optional Z raise for safety)
+    if (raiseZ) {
+      // Raise Z to safe height (relative)
+      await sendAndWait('G91');
+      await moveRel('Z', zSafe);
+      await sendAndWait('G90');
+      // Move XY to Point 1
+      await sendAndWait(`G53 G0 X${SideProbe.point1.x.toFixed(3)} Y${SideProbe.point1.y.toFixed(3)}`);
+      // Lower Z back down (relative)
+      await sendAndWait('G91');
+      await moveRel('Z', -zSafe);
+      await sendAndWait('G90');
+    } else {
+      // Direct move to Point 1 (XYZ together)
+      await sendAndWait('G90');
+      await sendAndWait(`G53 G0 X${SideProbe.point1.x.toFixed(3)} Y${SideProbe.point1.y.toFixed(3)} Z${SideProbe.point1.z.toFixed(3)}`);
+    }
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Probe Point 1
+    await sendAndWait('G91');
+    const probe1a = await probeAndCapture(axis, dir * probeDistance, feedrate);
+    await moveRel(axis, -dir * retract);
+    const probe1b = await probeAndCapture(axis, dir * (retract + 3), feedrateSlow);
+    const measured1 = (probe1a[axis.toLowerCase()] + probe1b[axis.toLowerCase()]) / 2;
+    await moveRel(axis, -dir * retract); // Return to original position
+    SideProbe.point1.measured = measured1;
+
+    // Move to Point 2 (with optional Z raise for safety)
+    if (raiseZ) {
+      // Raise Z to safe height (relative)
+      await sendAndWait('G91');
+      await moveRel('Z', zSafe);
+      await sendAndWait('G90');
+      // Move XY to Point 2
+      await sendAndWait(`G53 G0 X${SideProbe.point2.x.toFixed(3)} Y${SideProbe.point2.y.toFixed(3)}`);
+      // Lower Z back down (relative)
+      await sendAndWait('G91');
+      await moveRel('Z', -zSafe);
+      await sendAndWait('G90');
+    } else {
+      // Direct move to Point 2 (XYZ together)
+      await sendAndWait('G90');
+      await sendAndWait(`G53 G0 X${SideProbe.point2.x.toFixed(3)} Y${SideProbe.point2.y.toFixed(3)} Z${SideProbe.point2.z.toFixed(3)}`);
+    }
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Probe Point 2
+    await sendAndWait('G91');
+    const probe2a = await probeAndCapture(axis, dir * probeDistance, feedrate);
+    await moveRel(axis, -dir * retract);
+    const probe2b = await probeAndCapture(axis, dir * (retract + 3), feedrateSlow);
+    const measured2 = (probe2a[axis.toLowerCase()] + probe2b[axis.toLowerCase()]) / 2;
+    await moveRel(axis, -dir * retract); // Return to original position
+    SideProbe.point2.measured = measured2;
+
+    await sendAndWait('G90');
+
+    // Display results
+    displaySideProbeResults();
+
+  } catch (err) {
+    console.error('Probe error:', err);
+    alert('Probe failed: ' + err.message);
+    try { sendCommand('G90'); } catch(e) {}
+  } finally {
+    sendCommand('G90');
+    App.probeInProgress = false;
+  }
+}
+
+function displaySideProbeResults() {
+  if (!SideProbe.point1 || !SideProbe.point2) return;
+
+  const probeAxis = SideProbe.direction.charAt(1); // X or Y - axis being probed
+  const direction = SideProbe.direction; // Full direction like '+X', '-Y'
+  const measured1 = SideProbe.point1.measured;
+  const measured2 = SideProbe.point2.measured;
+  const difference = measured2 - measured1;
+
+  // Calculate the travel axis distance
+  const travelAxis = probeAxis === 'X' ? 'Y' : 'X';
+  const travelDistance = Math.abs(SideProbe.point2[travelAxis.toLowerCase()] - SideProbe.point1[travelAxis.toLowerCase()]);
+
+  // Determine which point is further from edge (Point 1 or Point 2)
+  const point1Further = measured1 > measured2;
+
+  // Get timestamp
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString();
+  SideProbe.lastProbeTime = timeStr;
+
+  let resultsText = `Side Probe Results - ${timeStr}\n\n`;
+  resultsText += `Point 1 (Reference): ${measured1.toFixed(3)} mm from edge\n`;
+  resultsText += `Point 2 (Adjust):    ${measured2.toFixed(3)} mm from edge\n`;
+  resultsText += `Difference: ${Math.abs(difference).toFixed(3)} mm\n`;
+
+  // Show comparison to last probe if available
+  if (SideProbe.lastDifference !== null) {
+    const change = Math.abs(difference) - SideProbe.lastDifference;
+    if (change < -0.001) {
+      resultsText += `Last Probe Difference: ${SideProbe.lastDifference.toFixed(3)} mm (✓ BETTER by ${Math.abs(change).toFixed(3)}mm)\n`;
+    } else if (change > 0.001) {
+      resultsText += `Last Probe Difference: ${SideProbe.lastDifference.toFixed(3)} mm (⚠ WORSE by ${change.toFixed(3)}mm)\n`;
+    } else {
+      resultsText += `Last Probe Difference: ${SideProbe.lastDifference.toFixed(3)} mm (= SAME)\n`;
+    }
+  }
+
+  resultsText += `Travel Distance (${travelAxis}): ${travelDistance.toFixed(1)} mm\n\n`;
+
+  // Store current difference for next comparison
+  SideProbe.lastDifference = Math.abs(difference);
+
+  if (Math.abs(difference) < 0.01) {
+    resultsText += `✓ ALIGNED - Workpiece is parallel (within 0.01mm tolerance)`;
+  } else {
+    resultsText += `⚠ NOT PARALLEL - Adjust Point 2 to match Point 1:\n\n`;
+
+    // Always frame as adjusting Point 2 to match Point 1 (reference)
+    if (point1Further) {
+      resultsText += `Point 2 is ${Math.abs(difference).toFixed(2)}mm CLOSER to edge than Point 1.\n`;
+      resultsText += `Move Point 2 location AWAY from edge by ${Math.abs(difference).toFixed(2)}mm.\n`;
+    } else {
+      resultsText += `Point 2 is ${Math.abs(difference).toFixed(2)}mm FURTHER from edge than Point 1.\n`;
+      resultsText += `Move Point 2 location CLOSER to edge by ${Math.abs(difference).toFixed(2)}mm.\n`;
+    }
+
+    resultsText += `\n(Point 1 = reference, do not move if possible)`;
+  }
+
+  document.getElementById('side-results').textContent = resultsText;
+}
+//#endregion
+
+//#region ===== HEIGHT MAP =====
+const HeightMap = {
+  probeData: [],  // Array of {x, y, z, success}
+  isProbing: false,
+  abortRequested: false,
+  slotX: [],
+  yPos: [],
+  currentSlot: 0,
+  currentY: 0,
+  totalPoints: 0,
+  completedPoints: 0
+};
+
+function parseCSV(str) {
+  return str.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+}
+
+function saveHeightmapPreset() {
+  const name = document.getElementById('hm-preset-name').value.trim();
+  if (!name) {
+    alert('Please enter a preset name');
+    return;
+  }
+
+  const preset = {
+    name: name,
+    slotX: document.getElementById('hm-slot-x').value,
+    yPos: document.getElementById('hm-y-pos').value,
+    probeDepth: parseFloat(document.getElementById('hm-probe-depth').value),
+    feedrate: parseInt(document.getElementById('hm-feedrate').value),
+    timeout: parseInt(document.getElementById('hm-timeout').value)
+  };
+
+  if (!App.settings.presets.heightmap) {
+    App.settings.presets.heightmap = [];
+  }
+
+  // Check if preset name already exists
+  const existingIndex = App.settings.presets.heightmap.findIndex(p => p.name === name);
+  if (existingIndex >= 0) {
+    if (!confirm(`Preset "${name}" already exists. Overwrite?`)) return;
+    App.settings.presets.heightmap[existingIndex] = preset;
+  } else {
+    App.settings.presets.heightmap.push(preset);
+  }
+
+  saveSettingsToEmbedded();
+  updateSettingsJSON();
+  loadHeightmapPresets();
+  updatePresetCounts();
+  document.getElementById('hm-preset-name').value = '';
+  alert(`Preset "${name}" saved!`);
+}
+
+function loadHeightmapPresets() {
+  const select = document.getElementById('hm-preset-list');
+  select.innerHTML = '<option value="">-- Load Preset --</option>';
+  if (!App.settings.presets.heightmap) return;
+  App.settings.presets.heightmap.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.name;
+    select.appendChild(opt);
+  });
+}
+
+function loadHeightmapPreset() {
+  const select = document.getElementById('hm-preset-list');
+  const idx = parseInt(select.value);
+  if (isNaN(idx)) return;
+
+  const preset = App.settings.presets.heightmap[idx];
+  if (!preset) return;
+
+  document.getElementById('hm-slot-x').value = preset.slotX;
+  document.getElementById('hm-y-pos').value = preset.yPos;
+  document.getElementById('hm-probe-depth').value = preset.probeDepth;
+  document.getElementById('hm-feedrate').value = preset.feedrate;
+  document.getElementById('hm-timeout').value = preset.timeout;
+  document.getElementById('hm-preset-name').value = preset.name;
+}
+
+function deleteHeightmapPreset() {
+  const select = document.getElementById('hm-preset-list');
+  const idx = parseInt(select.value);
+  if (isNaN(idx)) {
+    alert('Please select a preset to delete');
+    return;
+  }
+
+  const preset = App.settings.presets.heightmap[idx];
+  if (!confirm(`Delete preset "${preset.name}"?`)) return;
+
+  App.settings.presets.heightmap.splice(idx, 1);
+  saveSettingsToEmbedded();
+  updateSettingsJSON();
+  loadHeightmapPresets();
+  updatePresetCounts();
+}
+
+async function setHeightmapStartPoint() {
+  if (!App.isConnected) {
+    alert('Not connected to FluidNC');
+    return;
+  }
+
+  if (!confirm('Set current position as X0 Y0 in work coordinate system (G10 L20 P1 X0 Y0)?')) return;
+
+  const { sendAndWait } = createProbeHelpers();
+
+  try {
+    await sendAndWait('G10 L20 P1 X0 Y0');
+    await sendAndWait('$#');  // Request WCO update
+    alert('Start point set! Current position is now X0 Y0.');
+  } catch (e) {
+    alert('Failed to set start point: ' + e.message);
+  }
+}
+
+async function startHeightmapProbe() {
+  if (!App.isConnected) {
+    alert('Not connected to FluidNC');
+    return;
+  }
+
+  if (App.probeInProgress || HeightMap.isProbing) {
+    alert('Probe already in progress');
+    return;
+  }
+
+  // Create probe helpers
+  const { sendAndWait, probeAndCapture, moveRel } = createProbeHelpers();
+
+  // Parse configuration
+  HeightMap.slotX = parseCSV(document.getElementById('hm-slot-x').value);
+  HeightMap.yPos = parseCSV(document.getElementById('hm-y-pos').value);
+
+  if (HeightMap.slotX.length === 0 || HeightMap.yPos.length === 0) {
+    alert('Invalid slot X or Y positions');
+    return;
+  }
+
+  const probeDepth = parseFloat(document.getElementById('hm-probe-depth').value);
+  const feedrate = parseInt(document.getElementById('hm-feedrate').value);
+  const feedrateSlow = App.settings.probe.feedrateSlow || 50;
+  const retract = App.settings.probe.retractDistance || 2;
+  const timeout = parseInt(document.getElementById('hm-timeout').value) * 1000;
+  const doubleTouch = document.getElementById('hm-double-touch').checked;
+
+  if (probeDepth >= 0) {
+    alert('Probe Depth must be negative');
+    return;
+  }
+
+  HeightMap.totalPoints = HeightMap.slotX.length * HeightMap.yPos.length;
+  const mode = doubleTouch ? 'double-touch (accurate)' : 'single-touch (fast)';
+  if (!confirm(`Start probing ${HeightMap.totalPoints} points (${HeightMap.slotX.length} slots × ${HeightMap.yPos.length} Y positions)?\n\nMode: ${mode}`)) {
+    return;
+  }
+
+  // Initialize probing state
+  HeightMap.probeData = [];
+  HeightMap.isProbing = true;
+  HeightMap.abortRequested = false;
+  HeightMap.currentSlot = 0;
+  HeightMap.currentY = 0;
+  HeightMap.completedPoints = 0;
+  App.probeInProgress = true;
+
+  document.getElementById('btn-hm-start').disabled = true;
+  document.getElementById('btn-hm-abort').disabled = false;
+  document.getElementById('btn-hm-export-csv').disabled = true;
+  document.getElementById('btn-hm-export-html').disabled = true;
+  document.getElementById('hm-results').textContent = 'Probing started...\n';
+
+  try {
+    // Initialize
+    await sendAndWait('G21');  // Metric
+    await sendAndWait('G90');  // Absolute positioning
+    await sendAndWait('G54');  // Use WCS 1
+
+    // Probe each slot
+    for (let i = 0; i < HeightMap.slotX.length; i++) {
+      if (HeightMap.abortRequested) break;
+
+      HeightMap.currentSlot = i;
+      const x = HeightMap.slotX[i];
+
+      for (let j = 0; j < HeightMap.yPos.length; j++) {
+        if (HeightMap.abortRequested) break;
+
+        HeightMap.currentY = j;
+        const y = HeightMap.yPos[j];
+
+        updateHeightmapProgress();
+
+        // Move XY to position (staying at Z=0)
+        await sendAndWait(`G0 X${x.toFixed(3)} Y${y.toFixed(3)}`);
+
+        let pz = null;
+        let success = false;
+
+        if (doubleTouch) {
+          // DOUBLE-TOUCH MODE: Fast probe + retract + slow probe
+          await sendAndWait('G91');  // Switch to relative
+
+          // Fast probe
+          const fastCmd = `G38.2 Z${probeDepth.toFixed(3)} F${feedrate}`;
+          const fastResponse = await sendAndWait(fastCmd, timeout);
+
+          // Retract
+          await sendAndWait(`G0 Z${retract.toFixed(3)}`);
+
+          // Slow probe
+          const slowCmd = `G38.2 Z${(probeDepth + retract).toFixed(3)} F${feedrateSlow}`;
+          const slowResponse = await sendAndWait(slowCmd, timeout);
+
+          await sendAndWait('G90');  // Back to absolute
+
+          // Parse slow probe result (more accurate)
+          const match = slowResponse.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);
+          if (match) {
+            pz = parseFloat(match[3]);
+            success = parseInt(match[4]) === 1;
+          }
+        } else {
+          // SINGLE-TOUCH MODE: Just one probe
+          await sendAndWait('G91');  // Switch to relative
+          const probeCmd = `G38.2 Z${probeDepth.toFixed(3)} F${feedrate}`;
+          const response = await sendAndWait(probeCmd, timeout);
+          await sendAndWait('G90');  // Back to absolute
+
+          // Parse probe result
+          const match = response.match(/\[PRB:([-\d.]+),([-\d.]+),([-\d.]+)(?:,[-\d.]+)?:(\d)\]/);
+          if (match) {
+            pz = parseFloat(match[3]);
+            success = parseInt(match[4]) === 1;
+          }
+        }
+
+        // Store result
+        if (success) {
+          HeightMap.probeData.push({ x: x, y: y, z: pz, success: true });
+          HeightMap.completedPoints++;
+        } else {
+          HeightMap.probeData.push({ x: x, y: y, z: null, success: false });
+          HeightMap.completedPoints++;
+        }
+
+        // Retract to Z=0
+        await sendAndWait('G0 Z0');
+      }
+    }
+
+    // Return to origin (already at Z=0)
+    await sendAndWait('G0 X0 Y0');
+
+    if (HeightMap.abortRequested) {
+      document.getElementById('hm-results').textContent = 'Probing aborted by user.\n';
+    } else {
+      displayHeightmapResults();
+      document.getElementById('btn-hm-export-csv').disabled = false;
+      document.getElementById('btn-hm-export-html').disabled = false;
+    }
+
+  } catch (e) {
+    document.getElementById('hm-results').textContent = 'Probing failed: ' + e.message;
+    alert('Probing failed: ' + e.message);
+  } finally {
+    HeightMap.isProbing = false;
+    App.probeInProgress = false;
+    document.getElementById('btn-hm-start').disabled = false;
+    document.getElementById('btn-hm-abort').disabled = true;
+    document.getElementById('hm-progress').textContent = '';
+  }
+}
+
+function abortHeightmapProbe() {
+  if (HeightMap.isProbing) {
+    HeightMap.abortRequested = true;
+    document.getElementById('hm-progress').textContent = 'Aborting...';
+  }
+}
+
+function updateHeightmapProgress() {
+  const percent = ((HeightMap.completedPoints / HeightMap.totalPoints) * 100).toFixed(1);
+  const slotNum = HeightMap.currentSlot + 1;
+  const yNum = HeightMap.currentY + 1;
+  document.getElementById('hm-progress').textContent =
+    `Probing slot ${slotNum}/${HeightMap.slotX.length}, Y position ${yNum}/${HeightMap.yPos.length} (${percent}% complete)`;
+}
+
+function displayHeightmapResults() {
+  const data = HeightMap.probeData.filter(d => d.success);
+  if (data.length === 0) {
+    document.getElementById('hm-results').textContent = 'No successful probe points.';
+    return;
+  }
+
+  // Find reference Z (first point)
+  const refZ = data[0].z;
+
+  // Calculate statistics
+  const zValues = data.map(d => d.z);
+  const minZ = Math.min(...zValues);
+  const maxZ = Math.max(...zValues);
+  const avgZ = zValues.reduce((a, b) => a + b, 0) / zValues.length;
+  const range = maxZ - minZ;
+
+  // Build results text
+  let resultsText = `Height Map Results (${data.length} points)\n\n`;
+  resultsText += `Reference Z (first point): ${refZ.toFixed(3)} mm\n`;
+  resultsText += `Min Z: ${minZ.toFixed(3)} mm\n`;
+  resultsText += `Max Z: ${maxZ.toFixed(3)} mm\n`;
+  resultsText += `Range: ${range.toFixed(3)} mm\n`;
+  resultsText += `Average Z: ${avgZ.toFixed(3)} mm\n\n`;
+
+  resultsText += `X Slots: ${HeightMap.slotX.join(', ')} mm\n`;
+  resultsText += `Y Positions: ${HeightMap.yPos.join(', ')} mm\n\n`;
+
+  resultsText += `Use Export buttons to save data as CSV or HTML report.`;
+
+  document.getElementById('hm-results').textContent = resultsText;
+}
+
+function exportHeightmapCSV() {
+  if (HeightMap.probeData.length === 0) {
+    alert('No probe data to export');
+    return;
+  }
+
+  const data = HeightMap.probeData.filter(d => d.success);
+  const refZ = data[0].z;
+  const timestamp = new Date().toISOString();
+
+  // Build CSV with dual-chart format
+  let csv = '# T-Slot Height Map Raw Data\n';
+  csv += `# Generated: ${timestamp}\n`;
+  csv += `# Probe points: ${data.length}\n\n`;
+
+  // Header row
+  csv += 'X,Y,Z,,Y';
+  HeightMap.slotX.forEach(x => csv += `,${x}`);
+  csv += '\n';
+
+  // Build grid data structures (Y reversed - high to low)
+  const yReversed = [...HeightMap.yPos].reverse();
+
+  let rawIdx = 0;
+  const totalRawPoints = data.length;
+
+  // First section: Raw data on left, Z grid on right
+  for (let yi = 0; yi < yReversed.length; yi++) {
+    const y = yReversed[yi];
+
+    // Left side: raw data row (if available)
+    if (rawIdx < totalRawPoints) {
+      const d = data[rawIdx];
+      csv += `${d.x.toFixed(3)},${d.y.toFixed(3)},${d.z.toFixed(3)}`;
+      rawIdx++;
+    } else {
+      csv += ',,';
+    }
+
+    // Right side: grid Z values for this Y
+    csv += `,  ,${y}`;
+    HeightMap.slotX.forEach(x => {
+      const point = data.find(d => Math.abs(d.x - x) < 0.01 && Math.abs(d.y - y) < 0.01);
+      csv += `,${point ? point.z.toFixed(3) : ''}`;
+    });
+    csv += '\n';
+  }
+
+  // Second section: Continue raw data on left, deviation grid on right
+  csv += `,,,,Deviation`;
+  HeightMap.slotX.forEach(() => csv += ',');
+  csv += '\n';
+
+  for (let yi = 0; yi < yReversed.length; yi++) {
+    const y = yReversed[yi];
+
+    // Left side: raw data row (if available)
+    if (rawIdx < totalRawPoints) {
+      const d = data[rawIdx];
+      csv += `${d.x.toFixed(3)},${d.y.toFixed(3)},${d.z.toFixed(3)}`;
+      rawIdx++;
+    } else {
+      csv += ',,';
+    }
+
+    // Right side: deviation grid for this Y
+    csv += `,  ,${y}`;
+    HeightMap.slotX.forEach(x => {
+      const point = data.find(d => Math.abs(d.x - x) < 0.01 && Math.abs(d.y - y) < 0.01);
+      if (point) {
+        const dev = point.z - refZ;
+        csv += `,${dev >= 0 ? '+' : ''}${dev.toFixed(3)}`;
+      } else {
+        csv += ',';
+      }
+    });
+    csv += '\n';
+  }
+
+  // Continue any remaining raw data
+  while (rawIdx < totalRawPoints) {
+    const d = data[rawIdx];
+    csv += `${d.x.toFixed(3)},${d.y.toFixed(3)},${d.z.toFixed(3)},,,,,,,,\n`;
+    rawIdx++;
+  }
+
+  // Download
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const timeStr = timestamp.replace(/:/g, '').split('.')[0];
+  a.href = url;
+  a.download = `heightmap_${timeStr}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportHeightmapHTML() {
+  if (HeightMap.probeData.length === 0) {
+    alert('No probe data to export');
+    return;
+  }
+
+  const data = HeightMap.probeData.filter(d => d.success);
+  const refZ = data[0].z;
+  const zValues = data.map(d => d.z);
+  const minZ = Math.min(...zValues);
+  const maxZ = Math.max(...zValues);
+  const avgZ = zValues.reduce((a, b) => a + b, 0) / zValues.length;
+  const range = maxZ - minZ;
+
+  // Build heatmap table (Y reversed - high to low for operator perspective)
+  let heatmapHTML = '<table border="1" cellpadding="4" style="border-collapse: collapse; font-size: 12px;">\n';
+  heatmapHTML += '<tr><th>Y \\ X</th>';
+  HeightMap.slotX.forEach(x => {
+    heatmapHTML += `<th>${x.toFixed(1)}</th>`;
+  });
+  heatmapHTML += '</tr>\n';
+
+  // Reverse Y order: high Y at top (back of machine), low Y at bottom (front/operator)
+  const yReversed = [...HeightMap.yPos].reverse();
+  yReversed.forEach(y => {
+    heatmapHTML += `<tr><th>${y.toFixed(1)}</th>`;
+    HeightMap.slotX.forEach(x => {
+      const point = data.find(d => Math.abs(d.x - x) < 0.01 && Math.abs(d.y - y) < 0.01);
+      if (point) {
+        const dev = point.z - refZ;
+        const absMax = Math.max(Math.abs(minZ - refZ), Math.abs(maxZ - refZ));
+        const normalized = dev / (absMax || 1);  // -1 to 1
+
+        // Color: blue (low) -> white (ref) -> red (high)
+        let color;
+        if (normalized < 0) {
+          const intensity = Math.floor(255 * (1 + normalized));
+          color = `rgb(${intensity},${intensity},255)`;
+        } else {
+          const intensity = Math.floor(255 * (1 - normalized));
+          color = `rgb(255,${intensity},${intensity})`;
+        }
+
+        heatmapHTML += `<td style="background: ${color}; text-align: center;">${dev.toFixed(2)}</td>`;
+      } else {
+        heatmapHTML += '<td style="background: #ccc; text-align: center;">N/A</td>';
+      }
+    });
+    heatmapHTML += '</tr>\n';
+  });
+  heatmapHTML += '</table>\n';
+  heatmapHTML += '<p><strong>Orientation:</strong> Top = back of machine (high Y), Bottom = front/operator (low Y)</p>';
+
+  // Build HTML report
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Height Map Report</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; }
+  table { border-collapse: collapse; margin: 20px 0; }
+  th, td { border: 1px solid #999; padding: 6px; text-align: center; }
+  th { background: #ddd; }
+</style>
+</head>
+<body>
+<h1>Height Map Report</h1>
+<p>Generated: ${new Date().toLocaleString()}</p>
+
+<h2>Summary Statistics</h2>
+<table>
+  <tr><th>Metric</th><th>Value</th></tr>
+  <tr><td>Total Points</td><td>${data.length}</td></tr>
+  <tr><td>Reference Z (first point)</td><td>${refZ.toFixed(3)} mm</td></tr>
+  <tr><td>Min Z</td><td>${minZ.toFixed(3)} mm</td></tr>
+  <tr><td>Max Z</td><td>${maxZ.toFixed(3)} mm</td></tr>
+  <tr><td>Range</td><td>${range.toFixed(3)} mm</td></tr>
+  <tr><td>Average Z</td><td>${avgZ.toFixed(3)} mm</td></tr>
+</table>
+
+<h2>Configuration</h2>
+<p><strong>X Slots:</strong> ${HeightMap.slotX.join(', ')} mm</p>
+<p><strong>Y Positions:</strong> ${HeightMap.yPos.join(', ')} mm</p>
+
+<h2>Heatmap (Deviation from Reference)</h2>
+${heatmapHTML}
+
+<h2>Raw Data</h2>
+<table>
+  <tr><th>X</th><th>Y</th><th>Z</th><th>Deviation</th></tr>
+${data.map(d => {
+  const dev = d.z - refZ;
+  return `  <tr><td>${d.x.toFixed(3)}</td><td>${d.y.toFixed(3)}</td><td>${d.z.toFixed(3)}</td><td>${dev.toFixed(3)}</td></tr>`;
+}).join('\n')}
+</table>
+</body>
+</html>`;
+
+  // Download
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const timestamp = new Date().toISOString().replace(/:/g, '').split('.')[0];
+  a.download = `heightmap_report_${timestamp}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+//#endregion
+
+//#region ===== INITIALIZATION =====
+function init() {
+  console.log('FluidNC Probe Utility v' + VERSION);
+  loadSettings();
+  setupTabs();
+  setupSettingsAutoSave();
+  setupJogButtons();
+  
+  // Load presets for all probe types
+  loadCylinderPresets();
+  loadHolePresets();
+  loadCornerPresets();
+  loadHeightmapPresets();
+
+  // New control tab features
+  setupHighPowerLaser();
+  updateToolUI();
+  updateOffsetDisplay();
+  renderPositionLog();
+
+  // Live PWM hints when power inputs change
+  document.getElementById('laser-low-pct').addEventListener('input', updatePWMHints);
+  document.getElementById('laser-high-pct').addEventListener('input', updatePWMHints);
+
+  // Initialize Side Probe button states
+  updateSideProbeButtons();
+
+  // Update tip diameter displays
+  document.getElementById('cyl-tip-dia').value = App.settings.probe.tipDiameter;
+  document.getElementById('hole-tip-dia').value = App.settings.probe.tipDiameter;
+
+  // Initialize probe distance calculations
+  updateCylProbeDistance();
+  updateHoleProbeDistance();
+  
+  // Button event listeners
+  document.getElementById('connect-btn').addEventListener('click', connect);
+  document.getElementById('disconnect-btn').addEventListener('click', disconnect);
+  document.getElementById('stop-btn').addEventListener('click', emergencyStop);
+  document.getElementById('refresh-json-btn').addEventListener('click', onRefreshJSON);
+  document.getElementById('apply-json-btn').addEventListener('click', onApplyJSON);
+  document.getElementById('format-json-btn').addEventListener('click', onFormatJSON);
+  document.getElementById('fullscreen-json-btn').addEventListener('click', enterFullscreenJSON);
+  document.getElementById('exit-fullscreen-btn').addEventListener('click', exitFullscreenJSON);
+  document.getElementById('fullscreen-refresh-btn').addEventListener('click', () => {
+    document.getElementById('fullscreen-json').value = document.getElementById('settings-json').value;
+  });
+  document.getElementById('fullscreen-apply-btn').addEventListener('click', () => {
+    document.getElementById('settings-json').value = document.getElementById('fullscreen-json').value;
+    onApplyJSON();
+  });
+  document.getElementById('fullscreen-format-btn').addEventListener('click', () => {
+    try {
+      const obj = JSON.parse(document.getElementById('fullscreen-json').value);
+      document.getElementById('fullscreen-json').value = JSON.stringify(obj, null, 2);
+    } catch (e) {
+      alert('Invalid JSON: ' + e.message);
+    }
+  });
+
+  // ESC key to exit fullscreen
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('fullscreen-overlay').classList.contains('active')) {
+      exitFullscreenJSON();
+    }
+  });
+  
+  // Sync header IP/port with settings
+  document.getElementById('ip-input').addEventListener('change', (e) => {
+    document.getElementById('setting-ip').value = e.target.value;
+    App.settings.connection.ip = e.target.value;
+    saveSettingsToEmbedded();
+    updateSettingsJSON();
+  });
+  document.getElementById('port-input').addEventListener('change', (e) => {
+    document.getElementById('setting-port').value = e.target.value;
+    App.settings.connection.port = parseInt(e.target.value);
+    saveSettingsToEmbedded();
+    updateSettingsJSON();
+  });
+  document.getElementById('setting-ip').addEventListener('change', (e) => {
+    document.getElementById('ip-input').value = e.target.value;
+  });
+  document.getElementById('setting-port').addEventListener('change', (e) => {
+    document.getElementById('port-input').value = e.target.value;
+  });
+  
+  console.log('Initialization complete');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+window.addEventListener('beforeunload', (e) => {
+  if (App.isConnected || App.probeInProgress) {
+    e.preventDefault();
+    e.returnValue = 'Connected to FluidNC or probe in progress. Leave anyway?';
+    return e.returnValue;
+  }
+});
+//#endregion
+</script>
+</body>
+</html>

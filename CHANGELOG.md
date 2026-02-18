@@ -5,6 +5,103 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.1] - 2026-02-18
+
+### Added
+- **Zero XY Undo** — Clicking "Set Job Origin XY Here" now snapshots the previous G54 offset and shows an "↩ Undo Zero XY" row that restores it with a single click. One level of undo only; row is hidden until a zero operation has been performed.
+- **Go Z 0 button** — Added next to "Go to Job Origin XY" in the Position section. Sends `G0 Z0` to move to the Z job origin.
+
+### Technical
+- New module `//#region ===== ZERO XY UNDO =====` with `_zeroXYUndo` module-level variable, `zeroAxisXYWithUndo()`, and `undoZeroXY()`.
+- Undo uses `G10 L2 P1 X{old} Y{old}` to restore the previous explicit G54 offset (no motion required).
+- New CSS: `.zero-undo-row`, `.zero-undo-row .undo-info` for the hidden undo row.
+
+---
+
+## [1.15.0] - 2026-02-18
+
+### Added — Control Tab Major Overhaul
+
+#### Move to Machine Position
+- New **Move to Machine Position** section using `G53` (absolute machine coordinates).
+- Per-axis checkboxes (X, Y, Z) to select which axes to move.
+- **← From Current** button populates fields with current machine position for easy round-tripping.
+- Warning reminder to clear Z before moving XY.
+
+#### Position Log (session only)
+- **● Record Current Position** captures current MCS and WCS with timestamp and editable label.
+- **Diff 2 Selected** computes ΔX/Y/Z in both machine and job coordinates between any two checked entries.
+- **Go** button on each entry issues `G53 G0` to return to that exact machine position.
+- Clears on page refresh (session only).
+
+#### Saved Job Origins (G54–G59)
+- Full **WCS / Job Origins Manager** table showing all six coordinate slots and their stored machine offsets.
+- **↻ Refresh from Controller** sends `$#` to load current values from EEPROM.
+- Per-slot **Go**, **Set Here** (G10 L20 — current position becomes that slot's 0,0,0), and **Set Values** (G10 L2 — enter explicit machine coords) buttons.
+- Edit panel slides in with confirm dialog before writing to EEPROM.
+- **Reset Job Origin G54 to Zero** button for LightBurn Absolute Coords workflow.
+- Parser upgraded from single-slot (`parseG54Offset`) to all six slots (`parseWCSOffsetLine`) — regex `/^\[G5[4-9]:/`.
+
+#### Return Points (G28 / G30)
+- Two parking spots stored in machine coordinates (survive power-off).
+- **Save Here** sends `G28.1` / `G30.1` with confirm dialog showing current machine position.
+- **Go There** sends `G28` / `G30`.
+- Typical workflow: jog to PCB corner → zero job XY → save as Return Point 1 → next session: Home → Go There.
+
+#### Tool Offset — Spindle to Laser
+- Stored offset display with **Move Laser to Spindle Zero** button (`G90 G0 X{offsetX} Y{offsetY}`).
+- Guided **two-step measurement workflow** (expandable `<details>` panel):
+  1. Position spindle at reference mark → Record Spindle Position.
+  2. Switch to laser, align beam → Record Laser Position.
+  3. Calculated ΔX/Y shown; add to measurements table.
+- Multiple measurements are averaged; **Save Average as Offset** stores result to settings JSON.
+- Offset written to Settings tab and embedded JSON via `saveSettingsToEmbedded()`.
+
+#### Active Tool Selector
+- **🔩 Spindle (T0)** / **⚡ Laser (T1)** buttons send `M6 T0` / `M6 T1`.
+- Tool badge in page header updates to SPINDLE (green) or LASER (amber).
+- Automatically disables Laser Control panel when Spindle is active.
+- Switching back to Spindle while low-power laser is firing automatically sends `M5`.
+
+#### Laser Control
+- **Low Power toggle** (1–10%, capped): fires `G90 M3 S{n} G1 F1`, toggles to `M5`.
+- **High Power hold-to-fire** (1–50% configurable max): fires only while mouse/touch is held; auto-stops on release or leave.
+- Live PWM hint (e.g., `= S18`) updates as percentage inputs change.
+- Panel disabled (dimmed, pointer-events: none) until Laser (T1) is active.
+
+#### Alarm / Clear
+- Dedicated **Unlock / Clear Alarm ($X)** section with explanatory text.
+
+#### Coordinate System Reference
+- Educational reference panel at the bottom of the Control tab explaining MCS, G54–G59, Return Points, Tool Offset, and G10 commands. Includes "golden rule" callout box.
+
+#### Enhanced Position Table
+- Column headers updated: "Machine Pos" / "Job Pos (G54)".
+- Per-axis zero buttons now labeled "Zero X", "Zero Y", "Zero Z" (was unlabeled "Zero").
+- "Zero XY" → "Set Job Origin XY Here" with tooltip showing G-code sent.
+- "Go XY 0" → "Go to Job Origin XY".
+
+#### Header Badge
+- SPINDLE / LASER indicator badge in header, always visible.
+
+### Added — Settings Tab
+- **Laser Settings** section: Low Power Default (%) and High Power Max (%) (safety cap).
+- **Stored Tool Offset** section: Offset X / Y (mm) — populated automatically by "Save Average as Offset" but also editable manually.
+
+### Changed
+- **Emergency Stop** now also sends `M5` (300 ms after soft-reset) and resets laser UI state (button text, firing indicators).
+- **`parseG54Offset` replaced by `parseWCSOffsetLine`** — handles G54–G59, updates `App.wcsOffsets[]` array, calls `renderWCSTable()` after each line.
+- **Global App state** expanded with: `activeTool`, `laserLowActive`, `wcsOffsets[6]`, `wcsEditIdx`, `posLog[]`, `posLogIdSeq`, `offsetSpindlePos`, `offsetLaserPos`, `offsetMeasurements[]`.
+- **Embedded JSON** adds `"laser"` and `"toolOffset"` keys.
+
+### Technical
+- New JS regions: `MCS MOVE`, `POSITION LOG`, `WCS / JOB ORIGINS MANAGER`, `RETURN POINTS (G28 / G30)`, `TOOL OFFSET`, `TOOL & LASER`, `ALARM CLEAR`.
+- Laser fire command: `G90 M3 S{n} G1 F1` on single sendCommand call (required for FluidNC laser mode `$32=1`).
+- High-power button uses `mousedown`/`mouseup`/`mouseleave`/`touchstart`/`touchend`/`touchcancel` + `contextmenu` prevention.
+- Init wires: `setupHighPowerLaser()`, `updateToolUI()`, `updateOffsetDisplay()`, `renderPositionLog()`, PWM hint event listeners.
+
+---
+
 ## [1.14.0] - 2025-12-30
 
 ### Added - Major UI and Feature Improvements
