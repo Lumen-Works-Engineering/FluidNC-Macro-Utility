@@ -188,11 +188,11 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
 <header id="header">
   <div class="header-group">
     <span class="header-label">IP:</span>
-    <input type="text" id="ip-input" value="192.168.73.13">
+    <input type="text" id="ip-input" value="fluidnc.local">
   </div>
   <div class="header-group">
     <span class="header-label">Port:</span>
-    <input type="number" id="port-input" value="81">
+    <input type="number" id="port-input" value="80">
   </div>
   <button id="connect-btn" class="btn-primary">Connect</button>
   <button id="disconnect-btn" disabled>Disconnect</button>
@@ -822,11 +822,11 @@ No data yet. Position probe and click "Start Probing".
       <div class="section-title">Connection</div>
       <div class="form-row">
         <span class="form-label">IP Address:</span>
-        <input type="text" id="setting-ip" value="192.168.73.13">
+        <input type="text" id="setting-ip" value="fluidnc.local">
       </div>
       <div class="form-row">
         <span class="form-label">Port:</span>
-        <input type="number" id="setting-port" value="81">
+        <input type="number" id="setting-port" value="80">
       </div>
     </div>
     <div class="section">
@@ -1016,7 +1016,7 @@ No data yet. Position probe and click "Start Probing".
 <!-- EMBEDDED SETTINGS (survives Save-As) -->
 <script id="user-settings" type="application/json">
 {
-  "connection": { "ip": "192.168.73.13", "port": 81 },
+  "connection": { "ip": "fluidnc.local", "port": 80 },
   "probe": {
     "tipDiameter": 2.0,
     "feedrate": 100,
@@ -1081,7 +1081,7 @@ function loadSettings() {
 
 function getDefaultSettings() {
   return {
-    connection: { ip: "192.168.73.13", port: 81 },
+    connection: { ip: "fluidnc.local", port: 80 },
     probe: { tipDiameter: 2.0, feedrate: 100, feedrateSlow: 50, timeout: 30, retractDistance: 2.0 },
     jog: { xySpeed: 1800, zSpeed: 400 },
     outputs: { mistOn: "M7", mistOff: "M9", vacuumOn: "M8", vacuumOff: "M9", iotOn: "M64 P0", iotOff: "M65 P0" },
@@ -1136,7 +1136,7 @@ function collectSettingsFromUI() {
   return {
     connection: {
       ip: document.getElementById('setting-ip').value,
-      port: parseInt(document.getElementById('setting-port').value) || 81
+      port: parseInt(document.getElementById('setting-port').value) || 80
     },
     probe: {
       tipDiameter: parseFloat(document.getElementById('setting-tip-dia').value) || 2.0,
