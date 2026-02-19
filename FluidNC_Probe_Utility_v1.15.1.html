@@ -280,6 +280,7 @@ textarea { resize: vertical; min-height: 100px; width: 100%; font-family: monosp
     <span class="status-dot" id="status-dot"></span>
     <span id="status-text">Disconnected</span>
   </div>
+  <span id="header-version" style="font-size:11px;color:var(--text-muted);margin-left:8px;"></span>
   <div style="flex: 1;"></div>
   <span id="header-tool-badge" class="tool-badge tool-badge-spindle" title="Active tool — use Tool Selector in Control tab to change">SPINDLE</span>
   <button id="stop-btn" class="btn-danger">⚠ STOP</button>
@@ -4347,6 +4348,7 @@ ${data.map(d => {
 //#region ===== INITIALIZATION =====
 function init() {
   console.log('FluidNC Probe Utility v' + VERSION);
+  document.getElementById('header-version').textContent = 'App-v' + VERSION;
   loadSettings();
   setupTabs();
   setupSettingsAutoSave();
