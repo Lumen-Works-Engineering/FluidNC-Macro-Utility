@@ -5,6 +5,22 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.2] - 2026-02-20
+
+### Fixed
+- **Position card Refresh button** — Added connection check; now shows "Not connected" alert instead of silently failing when the WebSocket is not open.
+- **Go to Job Origin buttons** — `gotoZero()` now requests a `?` status report 500 ms after issuing the move command so the position display updates automatically.
+
+### Added
+- **Position Log — axis-selective Go buttons** — Each log entry now shows **Go XY** (primary), **X**, **Y**, and **Z** buttons instead of a single "Go" that always moved all three axes. Each button sends a `G53 G0` move for only the selected axis/axes, leaving the others unchanged.
+- **Tool badge auto-sync from controller** — `parseStatusReport()` now reads the `T:n` field from FluidNC `?` status reports and updates `App.activeTool` + the header tool badge automatically. The badge now reflects the actual tool reported by the controller rather than only the last UI button click. The existing "↻ Refresh" button in the Position section already sends `?` so it also refreshes the tool display.
+
+### Technical
+- `gotoPosLog(id)` replaced by `gotoPosLogAxes(id, axes)` where `axes` is a string (`'XY'`, `'X'`, `'Y'`, `'Z'`) controlling which machine-coordinate axes are included in the `G53 G0` command.
+- `T:` field parsed in the `for...of parts` loop inside `parseStatusReport()`.
+
+---
+
 ## [1.15.1] - 2026-02-18
 
 ### Added
