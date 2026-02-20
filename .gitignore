@@ -14,6 +14,7 @@ Thumbs.db
 *.bak
 *.backup
 *~
+.archive/
 
 # Google Drive duplicates
 *\ (1).html
