@@ -5,6 +5,26 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.3] - 2026-02-20
+
+### Added
+- **Return Points coordinate display** — G28/G30 stored positions are now shown beneath each button row. The app parses `[G28:x,y,z]` and `[G30:x,y,z]` lines from the `$#` response and displays them as machine coordinates. The display auto-populates on connect (since `$#` is sent in `onopen`).
+- **Return Points ↻ Refresh button** — New button in the Return Points section title bar sends `$#` to re-read stored positions from the controller at any time.
+- **1-second position polling** — `init()` now starts a `setInterval` that sends `?` every second while connected, keeping the position display live without manual refresh. This also resolves the Refresh button appearing to do nothing (positions were already current between polls).
+
+### Fixed
+- **Return Points — G28/G30 not parsed** — `handleMessage()` now routes `[G28:...]` and `[G30:...]` lines to `parseReturnPtLine()`. Previously these lines from `$#` were silently ignored.
+- **Zero X/Y/Z display lag** — Delay before `$#` re-query after `G10 L20 P1` increased from 100 ms to 400 ms, giving FluidNC enough time to commit the new offset before the query fires. The Job Pos column now reliably shows 0.000 after zeroing.
+- **Position log — duplicate "X" button** — The delete button was labeled ✕ which appeared as a second X axis button. Renamed to **Del** with red text for clear distinction.
+- **Return Points — no refresh after save/goto** — `saveReturnPoint()` now sends `$#` after 400 ms to confirm the stored value; `gotoReturnPoint()` sends `?` after 600 ms to update position display.
+
+### Technical
+- `App.returnPts` array added to global state: `[null, null]` → each entry `{ x, y, z }` when populated.
+- `parseReturnPtLine(line)`, `renderReturnPts()`, `refreshReturnPts()` added to the RETURN POINTS region.
+- Position polling: `setInterval(() => { if (App.isConnected) sendCommand('?'); }, 1000)` in `init()`.
+
+---
+
 ## [1.15.2] - 2026-02-20
 
 ### Fixed
