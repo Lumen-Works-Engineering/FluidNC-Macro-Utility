@@ -5,6 +5,29 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.4] - 2026-02-25
+
+### Added
+- **Unlock ($X) button in header** — Moved from a standalone "Alarm" card to the page header bar, between the tool badge and the STOP button. Always accessible from any tab.
+- **WCO field parsed from status reports** — `parseStatusReport()` now reads `WCO:x,y,z` when FluidNC includes it in `?` responses. This keeps the G54 offset (and therefore Job Pos) in sync in real-time, fixing cases where zeroing from another client (e.g., FluidNC web UI) wasn't reflected until a manual `$#` was sent.
+- **WPos field parsed from status reports** — Handles FluidNC `$10` configurations that report work position instead of machine position.
+- **Move Spindle to Laser Zero button** — Added in the Tool Offset card alongside the existing "Move Laser to Spindle Zero" button. Sends `G90 G0 X{−offsetX} Y{−offsetY}` (the inverse of the laser button) to position the spindle at the laser's job origin.
+- **Reset Job Origin G54 to Zero in Home card** — Button moved from the Saved Job Origins (WCS) card to the Home card, where it naturally fits in the post-home workflow.
+
+### Changed
+- **Active Tool selector moved into Outputs card** — The T0/T1 tool selector buttons and warning text now appear at the bottom of the Outputs card (separated by a divider line), reducing the number of standalone cards on the Control tab.
+- **Standalone Alarm card removed** — Replaced by the header Unlock button (see above).
+- **Standalone Active Tool card removed** — Contents merged into the Outputs card (see above).
+
+### Fixed
+- **Position refresh lag after zeroing from external client** — The `WCO:` field in the FluidNC status report is now parsed on every `?` poll. Changes made to G54 from another client are now reflected within 1 second (the auto-poll interval) without needing a manual `$#` refresh.
+
+### Technical
+- `moveSpindleToLaserZero()` added to TOOL OFFSET region; sends `G90 G0 X${-to.x} Y${-to.y}`.
+- `WPos:` and `WCO:` branches added to the `for...of parts` loop in `parseStatusReport()`.
+
+---
+
 ## [1.15.3] - 2026-02-20
 
 ### Added
