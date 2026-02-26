@@ -5,6 +5,25 @@ All notable changes to the FluidNC Probe Utility will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.5] - 2026-02-25
+
+### Changed
+- **Tool Offset card redesigned for MCS-based workflow** — Recording and switching now operate entirely in machine coordinates (MCS / G53), making the feature functional when LightBurn forces G54 = home zero.
+- **"Record Spindle Position" and "Record Laser Position"** now capture MCS coordinates instead of WCS. Confirmation display now reads "Recorded MCS: X… Y…".
+- **"Move Laser/Spindle to Zero" buttons replaced** with two new context-aware switch buttons:
+  - **"Align Laser to Here (switch to T1)"** — from the current spindle MCS position, moves to `mcs.x + offset.x, mcs.y + offset.y` in G53 mode, then selects T1 (laser).
+  - **"Align Spindle to Here (switch to T0)"** — from the current laser MCS position, moves to `mcs.x − offset.x, mcs.y − offset.y` in G53 mode, then selects T0 (spindle).
+- Both switch buttons include a **Z-safe popup warning** (OK/Cancel) before any motion is sent.
+- Both switch buttons **alert and abort** if no offset has been measured yet (offset is 0,0).
+- Offset description updated from "WCS" to "MCS" throughout the Tool Offset card.
+
+### Technical
+- `moveToLaserZero()` and `moveSpindleToLaserZero()` replaced by `switchToLaser()` and `switchToSpindle()`.
+- Both new functions use `G53 G0` (machine absolute move) rather than `G90 G0` (WCS absolute move).
+- `recordSpindlePos()` and `recordLaserPos()` now reference `App.position.mcs` instead of `App.position.wcs`.
+
+---
+
 ## [1.15.4] - 2026-02-25
 
 ### Added
